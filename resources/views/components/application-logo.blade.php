@@ -1,0 +1,1 @@
+<img src="{{asset('images/fisherman.png')}}" alt="" width="70">
