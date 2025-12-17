@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "C:\\Users\\RepeaterCreeper\\.config\\herd\\bin\\php83\\php.exe",
+            "args": [
+                "C:\\Users\\RepeaterCreeper\\Development\\Web\\aqua\\artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}

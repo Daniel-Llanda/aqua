@@ -19,6 +19,7 @@
         <nav class="flex-1 px-4 py-6 space-y-3">
             <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Dashboard</a>
             <a href="{{ route('admin.users') }}" class="block px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-500 transition">Users</a>
+            <a href="{{ route('admin.telemetry') }}" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Telemetry</a>
             <a href="#" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Settings</a>
             <a href="#" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Reports</a>
         </nav>

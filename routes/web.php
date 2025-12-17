@@ -58,6 +58,7 @@ Route::prefix('admin')->group(function () {
     Route::middleware('auth:admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
         Route::get('/users', [AdminController::class, 'user'])->name('admin.users');
+        Route::get('/telemetry', [AdminController::class, 'telemetry'])->name('admin.telemetry');
     });
 });
 
