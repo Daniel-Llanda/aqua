@@ -55,10 +55,14 @@ Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login'])->name('admin.login.submit');
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
+    Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+    Route::get('/users', [AdminController::class, 'user'])->name('admin.users');
+    Route::get('/telemetry', [AdminController::class, 'telemetry'])->name('admin.telemetry');
+
     Route::middleware('auth:admin')->group(function () {
-        Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
-        Route::get('/users', [AdminController::class, 'user'])->name('admin.users');
-        Route::get('/telemetry', [AdminController::class, 'telemetry'])->name('admin.telemetry');
+        // Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+        // Route::get('/users', [AdminController::class, 'user'])->name('admin.users');
+        // Route::get('/telemetry', [AdminController::class, 'telemetry'])->name('admin.telemetry');
     });
 });
 
