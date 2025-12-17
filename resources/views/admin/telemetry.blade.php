@@ -64,7 +64,7 @@
                                         {{ $value }}
                                     @endif
                                 </p>
-                                <p class="text-gray-400 text-xs mt-2">Last updated: {{ $latestPayload->created_at->diffForHumans() }}</p>
+                                <p class="text-gray-400 text-xs mt-2">Last updated: {{ $latestPayload->created_at?->diffForHumans() ?? 'N/A' }}</p>
                             </div>
                         @endforeach
                     </div>
@@ -109,7 +109,7 @@
                                             @endforeach
                                         </div>
                                     </td>
-                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $payload->created_at->format('M d, Y H:i:s') ?? 'N/A' }}</td>
+                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $payload->created_at?->format('M d, Y H:i:s') ?? 'N/A' }}</td>
                                 </tr>
                             @empty
                                 <tr>
