@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\UserController;
 use App\Models\Admin;
 
 /*
@@ -21,9 +22,19 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+
+    Route::get('/dashboard', [UserController::class, 'dashboard'])
+        ->name('dashboard');
+
+    Route::get('/pond-info', [UserController::class, 'pondInfo'])
+        ->name('pond-info');
+
+    Route::post('/pond-info', [UserController::class, 'storePond'])
+        ->name('pond.store');
+
+});
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

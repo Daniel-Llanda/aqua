@@ -6,9 +6,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fomantic-ui/2.9.2/semantic.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.semanticui.css">
+    <style>
+        .sidebar-nav {
+            flex: 1;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        /* Default link style */
+        .nav-link {
+            display: block;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.25s ease, transform 0.15s ease;
+        }
+
+        /* Hover effect */
+        .nav-link:hover {
+            background-color: #3b82f6;
+             color: #ffffff; /* blue-500 */
+            transform: translateX(4px);
+        }
+
+        /* Active / current page */
+        .nav-link.active {
+            background-color: #1d4ed8; /* blue-700 */
+        }
+
+       
+
+    </style>
 </head>
 
 <body class="bg-gray-100 font-sans antialiased flex min-h-screen">
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fomantic-ui/2.9.2/semantic.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.6/js/dataTables.semanticui.js"></script>
 
     <!-- Sidebar -->
     <aside class="w-64 bg-blue-600 text-white flex flex-col">
@@ -16,12 +57,12 @@
             <h1 class="text-2xl font-bold">Admin Panel</h1>
         </div>
 
-        <nav class="flex-1 px-4 py-6 space-y-3">
-            <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Dashboard</a>
-            <a href="{{ route('admin.users') }}" class="block px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-500 transition">Users</a>
-            <a href="{{ route('admin.telemetry') }}" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Telemetry</a>
-            <a href="#" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Settings</a>
-            <a href="#" class="block px-4 py-2 rounded-lg hover:bg-blue-500 transition">Reports</a>
+        <nav class="sidebar-nav">
+            <a href="{{ route('admin.dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ route('admin.users') }}" class="nav-link active">Users</a>
+            <a href="{{ route('admin.telemetry') }}" class="nav-link">Telemetry</a>
+            <a href="#" class="nav-link">Settings</a>
+            <a href="#" class="nav-link">Reports</a>
         </nav>
 
         <div class="px-6 py-4 border-t border-blue-500">
@@ -54,7 +95,7 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="min-w-full border border-gray-200 rounded-lg">
+                    <table id="myTable" class="min-w-full border border-gray-200 rounded-lg">
                         <thead class="bg-blue-600 text-white">
                             <tr>
                                 <th class="px-6 py-3 text-left text-sm font-semibold">#</th>
@@ -84,6 +125,11 @@
             </div>
         </section>
     </main>
+     <script>
+        $(document).ready(function () {
+            $('#myTable').DataTable();
+        });
+    </script>
 
 </body>
 
