@@ -103,111 +103,127 @@
         </div>
     </div>
 
-    <!-- ================= jQuery ================= -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-    <script>
-        $(document).ready(function () {
+<script>
+    // Payload from database (passed via Blade)
+     window.sensorPayload = {!! json_encode($payload ?? []) !!};
 
-            let selectedPond = null;
+    $(document).ready(function () {
 
-            function typeText(el, text, speed = 20) {
-                el.html('');
-                let i = 0;
-                let interval = setInterval(() => {
-                    if (i < text.length) {
-                        el.append(text.charAt(i));
-                        i++;
-                    } else {
-                        clearInterval(interval);
-                    }
-                }, speed);
+        let selectedPond = null;
+
+        function typeText(el, text, speed = 20) {
+            el.html('');
+            let i = 0;
+            let interval = setInterval(() => {
+                if (i < text.length) {
+                    el.append(text.charAt(i));
+                    i++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, speed);
+        }
+
+        // ================= POND SELECTION =================
+        $('#pond-select').on('change', function () {
+            const option = $(this).find(':selected');
+
+            if (!option.val()) {
+                $('#pond-fish-container').addClass('hidden');
+                $('#pond-fish-list').html('');
+                $('#simulate-btn').prop('disabled', true);
+                selectedPond = null;
+                return;
             }
 
-            // ===== Pond Selection =====
-            $('#pond-select').on('change', function () {
-                const option = $(this).find(':selected');
+            selectedPond = {
+                id: option.val(),
+                fish: option.data('fish')
+            };
 
-                if (!option.val()) {
-                    $('#pond-fish-container').addClass('hidden');
-                    $('#pond-fish-list').html('');
-                    $('#simulate-btn').prop('disabled', true);
-                    selectedPond = null;
-                    return;
+            $('#pond-fish-list').html('');
+            selectedPond.fish.forEach(fish => {
+                $('#pond-fish-list').append(`
+                    <span class="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full">
+                        ${fish}
+                    </span>
+                `);
+            });
+
+            $('#pond-fish-container').removeClass('hidden');
+            $('#simulate-btn').prop('disabled', false);
+        });
+
+        // ================= RUN WATER TEST =================
+        $('#simulate-btn').on('click', function () {
+
+            if (!selectedPond || !sensorPayload) return;
+
+            $('#water-level').text('Measuring...');
+            $('#device-status').text('Sampling...');
+            $('#notification-message').text('Checking ammonia...');
+            $('#ai-suggestion').text('AI analyzing pond #' + selectedPond.id + '...');
+
+            setTimeout(() => {
+
+                // Read JSON payload
+                let temp = parseFloat(sensorPayload.water_temperature);
+                let pH = parseFloat(sensorPayload.ph);
+                let ammonia = parseFloat(sensorPayload.ammonia);
+
+                // Display values
+                $('#water-level').text(temp + ' °C');
+                $('#device-status').text(pH);
+
+                $('#notification-message').html(`
+                    Temp: ${temp} °C<br>
+                    pH: ${pH}<br>
+                    Ammonia: ${ammonia} ppm
+                `);
+
+                // ================= AI LOGIC =================
+                let issues = [];
+                let actions = [];
+
+                // Temperature rules
+                if (temp < 24) {
+                    issues.push('Low water temperature');
+                    actions.push('Increase water temperature gradually.');
+                } else if (temp > 32) {
+                    issues.push('High water temperature');
+                    actions.push('Increase aeration and provide shade.');
                 }
 
-                selectedPond = {
-                    id: option.val(),
-                    fish: option.data('fish')
-                };
+                // pH rules
+                if (pH < 6.5) {
+                    issues.push('Low pH (acidic water)');
+                    actions.push('Apply agricultural lime carefully.');
+                } else if (pH > 8.5) {
+                    issues.push('High pH (alkaline water)');
+                    actions.push('Perform partial water exchange.');
+                }
 
-                $('#pond-fish-list').html('');
-                selectedPond.fish.forEach(fish => {
-                    $('#pond-fish-list').append(`
-                        <span class="bg-blue-100 text-blue-700
-                                     text-xs px-3 py-1 rounded-full">
-                            ${fish}
-                        </span>
-                    `);
-                });
+                // Ammonia rules
+                if (ammonia > 0.05) {
+                    issues.push('Elevated ammonia level');
+                    actions.push('Reduce feeding and change water immediately.');
+                }
 
-                $('#pond-fish-container').removeClass('hidden');
-                $('#simulate-btn').prop('disabled', false);
-            });
+                // ================= AI RESPONSE =================
+                let aiText = 'AI Assessment for Pond #' + selectedPond.id +
+                    ' with fish species: ' + selectedPond.fish.join(', ') + '. ';
 
-            // ===== Sensor Simulation =====
-            $('#simulate-btn').on('click', function () {
+                aiText += issues.length
+                    ? issues.join('. ') + '. Recommended actions: ' + actions.join(' ')
+                    : 'All water parameters are within safe range. Continue regular monitoring.';
 
-                if (!selectedPond) return;
+                typeText($('#ai-suggestion'), aiText);
 
-                $('#water-level').text('Measuring...');
-                $('#device-status').text('Sampling...');
-                $('#notification-message').text('Checking ammonia...');
-                $('#ai-suggestion').text('AI analyzing pond #' + selectedPond.id + '...');
-
-                setTimeout(() => {
-
-                    let temp = (24 + Math.random() * 12).toFixed(1);
-                    let pH = (5 + Math.random() * 5).toFixed(2);
-                    let ammonia = (Math.random() * 1.8).toFixed(2);
-
-                    $('#water-level').text(temp + ' °C');
-                    $('#device-status').text(pH);
-
-                    let issues = [];
-                    let actions = [];
-
-                    if (temp > 32) {
-                        issues.push('High temperature');
-                        actions.push('Increase aeration and provide shade.');
-                    }
-
-                    if (pH < 5.5 || pH > 9) {
-                        issues.push('Unsafe pH level');
-                        actions.push('Perform partial water replacement.');
-                    }
-
-                    if (ammonia > 1) {
-                        issues.push('High ammonia');
-                        actions.push('Stop feeding and change water immediately.');
-                    }
-
-                    $('#notification-message').html(`
-                        Temp: ${temp} °C<br>
-                        pH: ${pH}<br>
-                        Ammonia: ${ammonia} ppm
-                    `);
-
-                    typeText(
-                        $('#ai-suggestion'),
-                        'AI Assessment for Pond #' + selectedPond.id +
-                        ' with fish species: ' + selectedPond.fish.join(', ') + '. ' +
-                        (issues.length ? issues.join(', ') + '. ' + actions.join(' ') :
-                        'All water parameters are within safe range.')
-                    );
-
-                }, 1200);
-            });
+            }, 1000);
         });
-    </script>
+    });
+</script>
+
 </x-app-layout>

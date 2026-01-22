@@ -61,8 +61,8 @@
             <a href="{{ route('admin.dashboard') }}" class="nav-link">Dashboard</a>
             <a href="{{ route('admin.users') }}" class="nav-link active">Users</a>
             <a href="{{ route('admin.telemetry') }}" class="nav-link">Telemetry</a>
-            <a href="#" class="nav-link">Settings</a>
-            <a href="#" class="nav-link">Reports</a>
+            <!-- <a href="#" class="nav-link">Settings</a>
+            <a href="#" class="nav-link">Reports</a> -->
         </nav>
 
         <div class="px-6 py-4 border-t border-blue-500">
@@ -109,22 +109,113 @@
                         <tbody class="divide-y divide-gray-200">
                             @foreach($users as $user)
                                 <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-6 py-3 text-sm text-gray-700">{{$user->id}}</td>
-                                    <td class="px-6 py-3 text-sm text-gray-700">{{$user->name}}</td>
-                                    <td class="px-6 py-3 text-sm text-gray-700">{{$user->email}}</td>
-                                    <td class="px-6 py-3 text-sm text-gray-700">{{$user->created_at}}</td>
+                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $user->id }}</td>
+                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $user->name }}</td>
+                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $user->email }}</td>
+                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $user->created_at->format('Y-m-d') }}</td>
                                     <td class="px-6 py-3 text-center">
-                                        <button class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Edit</button>
-                                        <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition">Delete</button>
+                                        <button
+                                            class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition view-user"
+                                            data-user='@json($user)'>
+                                            View
+                                        </button>
+
+
                                     </td>
                                 </tr>
                             @endforeach
+
                         </tbody>
                     </table>
                 </div>
             </div>
         </section>
     </main>
+    <!-- User Info Modal -->
+<!-- Overlay -->
+<div id="userModalOverlay"
+     class="fixed inset-0 bg-black bg-opacity-50 hidden z-40"></div>
+
+<!-- Modal -->
+<div id="userModal"
+     class="fixed inset-0 flex items-center justify-center hidden z-50">
+
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl">
+
+        <!-- Header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b">
+            <h3 class="text-lg font-semibold">User Information</h3>
+            <button id="closeModal" class="text-gray-500 hover:text-red-500 text-xl">
+                &times;
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 py-4 space-y-4">
+
+            <!-- User Info -->
+            <div>
+                <p><strong>Name:</strong> <span id="modalUserName"></span></p>
+                <p><strong>Email:</strong> <span id="modalUserEmail"></span></p>
+                <p><strong>Joined:</strong> <span id="modalUserCreated"></span></p>
+            </div>
+
+            <!-- Ponds -->
+            <div>
+                <h4 class="font-semibold mt-4 mb-2">Ponds</h4>
+                <ul id="modalUserPonds" class="list-disc pl-5 space-y-1"></ul>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t text-right">
+            <button id="closeModalBtn"
+                class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+    <script>
+        $(document).on('click', '.view-user', function () {
+
+            const user = $(this).data('user');
+
+            // Fill user info
+            $('#modalUserName').text(user.name);
+            $('#modalUserEmail').text(user.email);
+            $('#modalUserCreated').text(user.created_at);
+
+            // Fill ponds
+            const pondsList = $('#modalUserPonds');
+            pondsList.empty();
+
+            if (user.ponds && user.ponds.length > 0) {
+                user.ponds.forEach(pond => {
+                    pondsList.append(`
+                        <li>
+                            Pond #${pond.id} — ${pond.hectares} ha
+                        </li>
+                    `);
+                });
+            } else {
+                pondsList.append(`
+                    <li class="text-gray-500">No ponds assigned.</li>
+                `);
+            }
+
+            // Show modal
+            $('#userModal, #userModalOverlay').removeClass('hidden');
+        });
+
+        // Close modal
+        $('#closeModal, #closeModalBtn, #userModalOverlay').on('click', function () {
+            $('#userModal, #userModalOverlay').addClass('hidden');
+        });
+    </script>
+
+
      <script>
         $(document).ready(function () {
             $('#myTable').DataTable();

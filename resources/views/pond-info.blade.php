@@ -77,80 +77,111 @@
                     {{-- Fish Types --}}
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            Cultured Fish Species
+                            Cultured Aquatic Species (Select all that apply)
                         </label>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                            {{-- Brackishwater --}}
+                            {{-- Fish --}}
                             <div>
                                 <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                                    Brackishwater
+                                    Fish
                                 </h4>
                                 <div class="space-y-2 text-sm">
                                     <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Milkfish (Bangus)">
-                                        Milkfish (<i>Chanos chanos</i>)
+                                        <input type="checkbox" name="fish_type[]" value="Milkfish (Chanos chanos)">
+                                        Milkfish / Bangus (Chanos chanos)
                                     </label>
                                     <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Tilapia (Brackish)">
-                                        Tilapia (<i>Oreochromis spp.</i>)
+                                        <input type="checkbox" name="fish_type[]" value="Tilapia (General)">
+                                        Tilapia (General)
                                     </label>
+
+                                </div>
+                            </div>
+
+                            {{-- Shrimp / Prawns --}}
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                                    Shrimp / Prawns
+                                </h4>
+                                <div class="space-y-2 text-sm">
                                     <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Asian Sea Bass">
-                                        Asian Sea Bass (<i>Lates calcarifer</i>)
+                                        <input type="checkbox" name="fish_type[]" value="Penaeid Shrimp (General)">
+                                        Penaeid Shrimp (General brackishwater group)
+                                    </label>
+
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="fish_type[]" value="Black Tiger Shrimp (Penaeus monodon)">
+                                        Black Tiger Shrimp (Penaeus monodon)
+                                    </label>
+
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="fish_type[]" value="Pacific White Shrimp (Litopenaeus vannamei)">
+                                        Pacific White Shrimp / Whiteleg Shrimp
+                                        (Litopenaeus vannamei)
+                                    </label>
+
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="fish_type[]" value="Indian White Shrimp (Penaeus indicus)">
+                                        Indian White Shrimp (Penaeus indicus)
+                                    </label>
+
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="fish_type[]" value="Banana Shrimp (Metapenaeus spp.)">
+                                        Banana / Speckled Shrimp
+                                        (Metapenaeus ensis / M. monoceros)
+                                    </label>
+
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="fish_type[]" value="Giant Freshwater Prawn (Macrobrachium rosenbergii)">
+                                        Giant Freshwater Prawn
+                                        (Macrobrachium rosenbergii)
                                     </label>
                                 </div>
                             </div>
 
-                            {{-- Freshwater --}}
+                            {{-- Crabs --}}
                             <div>
                                 <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                                    Freshwater
+                                    Crabs
                                 </h4>
                                 <div class="space-y-2 text-sm">
                                     <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Nile Tilapia">
-                                        Nile Tilapia (<i>Oreochromis niloticus</i>)
+                                        <input type="checkbox" name="fish_type[]" value="Mud Crab (Scylla serrata)">
+                                        Mud Crab / Giant Mangrove Crab
+                                        (Scylla serrata)
                                     </label>
-                                    <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Common Carp">
-                                        Common Carp (<i>Cyprinus carpio</i>)
-                                    </label>
-                                    <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Catfish">
-                                        Catfish (<i>Clarias spp.</i>)
-                                    </label>
-                                </div>
-                            </div>
 
-                            {{-- Marine --}}
-                            <div>
-                                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                                    Marine / Cage Culture
-                                </h4>
-                                <div class="space-y-2 text-sm">
                                     <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Milkfish (Marine)">
-                                        Milkfish (<i>Chanos chanos</i>)
+                                        <input type="checkbox" name="fish_type[]" value="Green Mud Crab (Scylla tranquebarica)">
+                                        Green Mud Crab
+                                        (Scylla tranquebarica)
                                     </label>
+
                                     <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Grouper">
-                                        Grouper (<i>Epinephelus spp.</i>)
+                                        <input type="checkbox" name="fish_type[]" value="Orange Mud Crab (Scylla olivacea)">
+                                        Orange Mud Crab
+                                        (Scylla olivacea)
                                     </label>
+
                                     <label class="flex items-center gap-2">
-                                        <input type="checkbox" name="fish_type[]" value="Snapper">
-                                        Snapper (<i>Lutjanus spp.</i>)
+                                        <input type="checkbox" name="fish_type[]" value="Blue Swimming Crab (Portunus pelagicus)">
+                                        Blue Swimming Crab
+                                        (Portunus pelagicus)
+                                    </label>
+
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="fish_type[]" value="Atlantic Blue Crab (Callinectes sapidus)">
+                                        Atlantic Blue Crab
+                                        (Callinectes sapidus)
                                     </label>
                                 </div>
                             </div>
 
                         </div>
-
-                        <p class="mt-2 text-xs text-gray-500">
-                            Multiple fish species may be selected.
-                        </p>
                     </div>
+
                 </div>
 
                 {{-- Submit --}}

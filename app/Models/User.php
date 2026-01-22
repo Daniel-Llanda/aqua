@@ -45,4 +45,10 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    // User.php
+    public function ponds()
+    {
+        return $this->hasMany(Pond::class);
+    }
+
 }

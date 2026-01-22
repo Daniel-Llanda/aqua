@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Payload;
 use App\Models\Pond;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -13,11 +14,15 @@ class UserController extends Controller
      */
     public function dashboard()
     {
-           $ponds = Pond::where('user_id', Auth::id())
-                 ->latest()
-                 ->get();
+        $ponds = Pond::where('user_id', Auth::id())
+                ->latest()
+                ->get();
+$telemetry = Payload::latest()->first();
 
-        return view('dashboard', compact('ponds'));
+return view('dashboard', [
+    'ponds' => $ponds,
+    'payload' => $telemetry ? $telemetry->payload : []
+]);
     }
 
     /**

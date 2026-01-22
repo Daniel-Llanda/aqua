@@ -15,7 +15,8 @@ class AdminController extends Controller
 
     public function user()
     {
-        $users = User::all();
+        $users = User::with('ponds')->get();
+
         return view('admin.user', compact('users'));
     }
 
