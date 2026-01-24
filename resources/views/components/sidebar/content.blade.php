@@ -23,6 +23,16 @@
             <x-icons.dashboard class="flex-shrink-0 w-6 h-6" aria-hidden="true" />
         </x-slot>
     </x-sidebar.link>
+    <x-sidebar.link
+        title="Telemetry Log"
+        href="{{ route('telemetrylog') }}"
+        :isActive="request()->routeIs('telemetrylog')"
+    >
+        <x-slot name="icon">
+            <x-icons.dashboard class="flex-shrink-0 w-6 h-6" aria-hidden="true" />
+        </x-slot>
+    </x-sidebar.link>
+
 
     <!-- <x-sidebar.dropdown
         title="Buttons"

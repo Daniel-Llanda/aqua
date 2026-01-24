@@ -106,8 +106,9 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
 <script>
-    // Payload from database (passed via Blade)
-     window.sensorPayload = {!! json_encode($payload ?? []) !!};
+    // Payloads from database (passed via Blade)
+    // Format: { pond_id: {ph, water_temp, ammonia}, ... }
+    window.sensorPayloads = {!! json_encode($payloads ?? []) !!};
 
     $(document).ready(function () {
 
@@ -159,7 +160,15 @@
         // ================= RUN WATER TEST =================
         $('#simulate-btn').on('click', function () {
 
-            if (!selectedPond || !sensorPayload) return;
+            if (!selectedPond) return;
+
+            // Get the payload for the selected pond
+            let sensorPayload = sensorPayloads[selectedPond.id] ?? null;
+
+            if (!sensorPayload) {
+                alert('No telemetry data found for this pond.');
+                return;
+            }
 
             $('#water-level').text('Measuring...');
             $('#device-status').text('Sampling...');
@@ -169,7 +178,7 @@
             setTimeout(() => {
 
                 // Read JSON payload
-                let temp = parseFloat(sensorPayload.water_temperature);
+                let temp = parseFloat(sensorPayload.water_temp);
                 let pH = parseFloat(sensorPayload.ph);
                 let ammonia = parseFloat(sensorPayload.ammonia);
 
@@ -225,5 +234,6 @@
         });
     });
 </script>
+
 
 </x-app-layout>

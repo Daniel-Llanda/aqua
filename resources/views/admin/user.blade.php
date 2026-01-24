@@ -60,9 +60,7 @@
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="nav-link">Dashboard</a>
             <a href="{{ route('admin.users') }}" class="nav-link active">Users</a>
-            <a href="{{ route('admin.telemetry') }}" class="nav-link">Telemetry</a>
-            <!-- <a href="#" class="nav-link">Settings</a>
-            <a href="#" class="nav-link">Reports</a> -->
+            <!-- <a href="{{ route('admin.telemetry') }}" class="nav-link">Telemetry</a> -->
         </nav>
 
         <div class="px-6 py-4 border-t border-blue-500">
@@ -91,7 +89,11 @@
             <div class="bg-white p-6 rounded-2xl shadow-md">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-2xl font-semibold text-gray-700">User List</h3>
-                   
+                    <button id="openAddUserModal"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                        Add New User
+                    </button>
+
                 </div>
 
                 <div class="overflow-x-auto">
@@ -177,6 +179,58 @@
         </div>
     </div>
 </div>
+
+<!-- Add User Modal Overlay -->
+<div id="addUserOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40"></div>
+
+<!-- Add User Modal -->
+<div id="addUserModal" class="fixed inset-0 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-xl">
+
+        <!-- Header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b">
+            <h3 class="text-lg font-semibold">Add New User</h3>
+            <button id="closeAddUserModal" class="text-gray-500 hover:text-red-500 text-xl">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <form method="POST" action="{{ route('admin.users.create') }}">
+            @csrf
+            <div class="px-6 py-4 space-y-4">
+
+                <div>
+                    <label class="block font-medium">Name</label>
+                    <input type="text" name="name" class="w-full border rounded px-3 py-2" required>
+                </div>
+
+                <div>
+                    <label class="block font-medium">Email</label>
+                    <input type="email" name="email" class="w-full border rounded px-3 py-2" required>
+                </div>
+
+                <div>
+                    <label class="block font-medium">Password</label>
+                    <input type="password" name="password" class="w-full border rounded px-3 py-2" required>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t text-right">
+                <button type="button" id="closeAddUserModalBtn"
+                    class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Create User
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
     <script>
         $(document).on('click', '.view-user', function () {
 
@@ -213,13 +267,24 @@
         $('#closeModal, #closeModalBtn, #userModalOverlay').on('click', function () {
             $('#userModal, #userModalOverlay').addClass('hidden');
         });
+        $('#openAddUserModal').on('click', function() {
+            $('#addUserModal, #addUserOverlay').removeClass('hidden');
+        });
+
+        // Close Modal
+        $('#closeAddUserModal, #closeAddUserModalBtn, #addUserOverlay').on('click', function() {
+            $('#addUserModal, #addUserOverlay').addClass('hidden');
+        });
     </script>
 
 
-     <script>
+    <script>
         $(document).ready(function () {
-            $('#myTable').DataTable();
+            $('#myTable').DataTable({
+                order: [[0, 'desc']]  
+            });
         });
+
     </script>
 
 </body>

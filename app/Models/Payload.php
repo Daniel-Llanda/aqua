@@ -12,8 +12,12 @@ class Payload extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'user_id',
+        'pond_id',
         'payload',
     ];
+
+
 
     /**
      * Get the attributes that should be cast.
@@ -25,5 +29,14 @@ class Payload extends Model
         return [
             'payload' => 'array',
         ];
+    }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function pond()
+    {
+        return $this->belongsTo(Pond::class);
     }
 }

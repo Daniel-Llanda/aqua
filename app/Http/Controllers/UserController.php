@@ -14,15 +14,25 @@ class UserController extends Controller
      */
     public function dashboard()
     {
-        $ponds = Pond::where('user_id', Auth::id())
-                ->latest()
-                ->get();
-$telemetry = Payload::latest()->first();
+        $userId = Auth::id();
 
-return view('dashboard', [
-    'ponds' => $ponds,
-    'payload' => $telemetry ? $telemetry->payload : []
-]);
+        // Get all ponds for this user
+        $ponds = Pond::where('user_id', $userId)->latest()->get();
+
+        // Get latest payload for each pond
+        $payloads = Payload::whereIn('pond_id', $ponds->pluck('id'))
+            ->where('user_id', $userId)
+            ->latest()
+            ->get()
+            ->groupBy('pond_id')
+            ->map(function ($group) {
+                return $group->first()->payload;
+            });
+
+        return view('dashboard', [
+            'ponds' => $ponds,
+            'payloads' => $payloads
+        ]);
     }
 
     /**
@@ -54,6 +64,25 @@ return view('dashboard', [
         ]);
 
         return redirect()->back()->with('success', 'Fish pond information saved successfully.');
+    }
+    public function telemetrylog(Request $request)
+    {
+        $user = auth()->user();
+
+        // Get ponds owned by this user
+        $ponds = Pond::where('user_id', $user->id)->get();
+
+        // If a pond is selected, load its payloads
+        $payloads = collect();
+
+        if ($request->filled('pond_id')) {
+            $payloads = Payload::where('pond_id', $request->pond_id)
+                ->where('user_id', $user->id)
+                ->latest()
+                ->get();
+        }
+
+        return view('telemetrylog', compact('ponds', 'payloads'));
     }
 
 }

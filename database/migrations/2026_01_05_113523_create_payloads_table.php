@@ -13,9 +13,24 @@ return new class extends Migration
     {
         Schema::create('payloads', function (Blueprint $table) {
             $table->id();
+
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('pond_id');
+
             $table->json('payload');
             $table->timestamps();
+
+            $table->foreign('user_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
+            $table->foreign('pond_id')
+                ->references('id')
+                ->on('ponds')
+                ->onDelete('cascade');
         });
+
     }
 
     /**
@@ -23,6 +38,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('payloads');
+        Schema::dropIfExists('ponds');
     }
 };

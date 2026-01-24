@@ -56,7 +56,7 @@
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="nav-link active">Dashboard</a>
             <a href="{{ route('admin.users') }}" class="nav-link">Users</a>
-            <a href="{{ route('admin.telemetry') }}" class="nav-link">Telemetry</a>
+            <!-- <a href="{{ route('admin.telemetry') }}" class="nav-link">Telemetry</a> -->
             <!-- <a href="#" class="nav-link">Settings</a>
             <a href="#" class="nav-link">Reports</a> -->
         </nav>

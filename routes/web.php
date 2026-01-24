@@ -33,6 +33,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/pond-info', [UserController::class, 'storePond'])
         ->name('pond.store');
 
+    Route::get('/telemetrylog', [UserController::class, 'telemetrylog'])
+        ->name('telemetrylog');
+
+    Route::get('/payload', [UserController::class, 'getPayload'])
+        ->name('get.payload');
+
+
 });
 
 
@@ -71,6 +78,9 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
         Route::get('/users', [AdminController::class, 'user'])->name('admin.users');
         Route::get('/telemetry', [AdminController::class, 'telemetry'])->name('admin.telemetry');
+        Route::post('/users', [AdminController::class, 'storeUser'])->name('admin.users.create');
+
+        
     });
 });
 
