@@ -57,7 +57,7 @@
 
                                 <div>
                                     <span class="font-medium">Ammonia:</span>
-                                    {{ $log->payload['ammonia'] ?? '—' }}
+                                    {{ $log->payload['mq_ratio'] ?? '—' }}
                                 </div>
                             </div>
 
