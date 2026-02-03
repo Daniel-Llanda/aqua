@@ -114,7 +114,7 @@
                                     <td class="px-6 py-3 text-sm text-gray-700">{{ $user->id }}</td>
                                     <td class="px-6 py-3 text-sm text-gray-700">{{ $user->name }}</td>
                                     <td class="px-6 py-3 text-sm text-gray-700">{{ $user->email }}</td>
-                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $user->created_at->format('Y-m-d') }}</td>
+                                    <td class="px-6 py-3 text-sm text-gray-700">{{ $user->created_at?->format('Y-m-d') ?? 'N/A'}}</td>
                                     <td class="px-6 py-3 text-center">
                                         <button
                                             class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition view-user"
