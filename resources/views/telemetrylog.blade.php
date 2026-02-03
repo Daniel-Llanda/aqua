@@ -62,7 +62,7 @@
                             </div>
 
                             <div class="mt-2 text-xs text-gray-500">
-                                {{ $log->created_at->format('M d, Y h:i A') }}
+                                {{ $log->created_at?->format('M d, Y h:i A') ?? 'N/A' }}
                             </div>
                         </div>
                     @empty

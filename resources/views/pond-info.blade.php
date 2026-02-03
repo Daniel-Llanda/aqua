@@ -235,8 +235,8 @@
                         <div class="space-y-1 text-sm text-gray-600 dark:text-gray-300">
                             <p><strong>Pond ID:</strong> {{ $pond->id }}</p>
                             <p><strong>Pond Area:</strong> {{ $pond->hectares }} ha</p>
-                            <p><strong>Stocking Date:</strong> {{ \Carbon\Carbon::parse($pond->hatching_date)->format('M d, Y') }}</p>
-                            <p><strong>Harvest Date:</strong> {{ \Carbon\Carbon::parse($pond->harvest_date)->format('M d, Y') }}</p>
+                            <p><strong>Stocking Date:</strong> {{ isset($pond->hatching_date) ? \Carbon\Carbon::parse($pond->hatching_date)->format('M d, Y') : 'N/A'}}</p>
+                            <p><strong>Harvest Date:</strong> {{ isset($pond->harvest_date) ? \Carbon\Carbon::parse($pond->harvest_date)->format('M d, Y') : 'N/A'}}</p>
                         </div>
 
                         {{-- Countdown --}}
