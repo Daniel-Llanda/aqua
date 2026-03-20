@@ -9,8 +9,53 @@
             </p>
         </div>
     </x-slot>
+       
 
     <div class="p-6 bg-gray-50 dark:bg-dark-eval-1 rounded-lg shadow-sm">
+         <!-- ================= WATER QUALITY CHART ================= -->
+        <div class="my-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- pH Chart -->
+            <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
+                <h4 class="text-sm font-semibold mb-2">pH Level</h4>
+                <canvas id="phChart"></canvas>
+            </div>
+
+            <!-- Temperature Chart -->
+            <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
+                <h4 class="text-sm font-semibold mb-2">Water Temperature (°C)</h4>
+                <canvas id="tempChart"></canvas>
+            </div>
+
+            <!-- Ammonia Chart -->
+            <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
+                <h4 class="text-sm font-semibold mb-2">Ammonia (ppm)</h4>
+                <canvas id="ammoniaChart"></canvas>
+            </div>
+        </div>
+
+
+        <!-- ================= REAL-TIME STATUS ================= -->
+        <!-- <div class="mb-4 text-center mt-6">
+            <h3 class="text-lg font-semibold">Real-Time Water Quality Status</h3>
+
+            @if($status == 'Normal')
+                <div class="bg-green-500 text-white px-4 py-2 rounded">
+                    NORMAL
+                </div>
+            @elseif($status == 'Warning')
+                <div class="bg-yellow-500 text-white px-4 py-2 rounded">
+                    WARNING
+                </div>
+            @elseif($status == 'Critical')
+                <div class="bg-red-600 text-white px-4 py-2 rounded">
+                    CRITICAL
+                </div>
+            @else
+                <div class="bg-gray-500 text-white px-4 py-2 rounded">
+                    NO DATA
+                </div>
+            @endif
+        </div> -->
 
         <!-- ================= POND SELECTOR ================= -->
         <div class="mb-6">
@@ -101,14 +146,21 @@
                 Run Water Test
             </button>
         </div>
+
+      
+
     </div>
 
+    <!-- ================= SCRIPTS ================= -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
 <script>
-    // Payloads from database (passed via Blade)
-    // Format: { pond_id: {ph, water_temp, ammonia}, ... }
-    window.sensorPayloads = {!! json_encode($payloads ?? []) !!};
+    // ================= Pass payloads to JS =================
+    window.sensorPayloads = {!! json_encode($payLoads->mapWithKeys(function($p) {
+        return [$p->pond_id => $p->payload]; // payload is already array
+    })) !!};
 
     $(document).ready(function () {
 
@@ -127,7 +179,26 @@
             }, speed);
         }
 
-        // ================= POND SELECTION =================
+        // ================= Initialize Charts =================
+        const phChart = new Chart(document.getElementById('phChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: @json($labels), datasets: [{ label: 'pH Level', data: @json($phData), borderColor: 'blue', backgroundColor: 'rgba(0,0,255,0.1)', tension: 0.3 }] },
+            options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        const tempChart = new Chart(document.getElementById('tempChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: @json($labels), datasets: [{ label: 'Water Temperature (°C)', data: @json($tempData), borderColor: 'orange', backgroundColor: 'rgba(255,165,0,0.1)', tension: 0.3 }] },
+            options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        const ammoniaChart = new Chart(document.getElementById('ammoniaChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: @json($labels), datasets: [{ label: 'Ammonia (ppm)', data: @json($ammoniaData), borderColor: 'red', backgroundColor: 'rgba(255,0,0,0.1)', tension: 0.3 }] },
+            options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        // ================= Pond Selection =================
         $('#pond-select').on('change', function () {
             const option = $(this).find(':selected');
 
@@ -157,12 +228,10 @@
             $('#simulate-btn').prop('disabled', false);
         });
 
-        // ================= RUN WATER TEST =================
+        // ================= Run Water Test =================
         $('#simulate-btn').on('click', function () {
-
             if (!selectedPond) return;
 
-            // Get the payload for the selected pond
             let sensorPayload = sensorPayloads[selectedPond.id] ?? null;
 
             if (!sensorPayload) {
@@ -170,22 +239,20 @@
                 return;
             }
 
+            // Show measuring text
             $('#water-level').text('Measuring...');
             $('#device-status').text('Sampling...');
             $('#notification-message').text('Checking ammonia...');
             $('#ai-suggestion').text('AI analyzing pond #' + selectedPond.id + '...');
 
             setTimeout(() => {
-
-                // Read JSON payload
                 let temp = parseFloat(sensorPayload.water_temp);
                 let pH = parseFloat(sensorPayload.ph);
                 let ammonia = parseFloat(sensorPayload.ammonia);
 
-                // Display values
+                // Update KPI cards
                 $('#water-level').text(temp + ' °C');
                 $('#device-status').text(pH);
-
                 $('#notification-message').html(`
                     Temp: ${temp} °C<br>
                     pH: ${pH}<br>
@@ -196,31 +263,14 @@
                 let issues = [];
                 let actions = [];
 
-                // Temperature rules
-                if (temp < 24) {
-                    issues.push('Low water temperature');
-                    actions.push('Increase water temperature gradually.');
-                } else if (temp > 32) {
-                    issues.push('High water temperature');
-                    actions.push('Increase aeration and provide shade.');
-                }
+                if (temp < 24) { issues.push('Low water temperature'); actions.push('Increase water temperature gradually.'); }
+                else if (temp > 32) { issues.push('High water temperature'); actions.push('Increase aeration and provide shade.'); }
 
-                // pH rules
-                if (pH < 6.5) {
-                    issues.push('Low pH (acidic water)');
-                    actions.push('Apply agricultural lime carefully.');
-                } else if (pH > 8.5) {
-                    issues.push('High pH (alkaline water)');
-                    actions.push('Perform partial water exchange.');
-                }
+                if (pH < 6.5) { issues.push('Low pH (acidic water)'); actions.push('Apply agricultural lime carefully.'); }
+                else if (pH > 8.5) { issues.push('High pH (alkaline water)'); actions.push('Perform partial water exchange.'); }
 
-                // Ammonia rules
-                if (ammonia > 0.05) {
-                    issues.push('Elevated ammonia level');
-                    actions.push('Reduce feeding and change water immediately.');
-                }
+                if (ammonia > 0.05) { issues.push('Elevated ammonia level'); actions.push('Reduce feeding and change water immediately.'); }
 
-                // ================= AI RESPONSE =================
                 let aiText = 'AI Assessment for Pond #' + selectedPond.id +
                     ' with fish species: ' + selectedPond.fish.join(', ') + '. ';
 
@@ -230,10 +280,23 @@
 
                 typeText($('#ai-suggestion'), aiText);
 
+                // ================= Update Charts =================
+                phChart.data.datasets[0].data = [ ...phChart.data.datasets[0].data, pH ];
+                tempChart.data.datasets[0].data = [ ...tempChart.data.datasets[0].data, temp ];
+                ammoniaChart.data.datasets[0].data = [ ...ammoniaChart.data.datasets[0].data, ammonia ];
+
+                let currentTime = new Date().toLocaleTimeString();
+                phChart.data.labels.push(currentTime);
+                tempChart.data.labels.push(currentTime);
+                ammoniaChart.data.labels.push(currentTime);
+
+                phChart.update();
+                tempChart.update();
+                ammoniaChart.update();
+
             }, 1000);
         });
     });
 </script>
-
 
 </x-app-layout>
