@@ -47,7 +47,7 @@
         }
 
         #map {
-            height: 60vh;
+            height: 45vh;
             border-radius: 6px;
             border: 1px solid #d1d5db;
         }
@@ -126,6 +126,7 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col">
 
+
         <!-- Top Bar -->
         <header class="bg-white shadow-sm px-8 py-4 flex justify-between items-center">
             <h2 class="text-xl font-semibold text-gray-800">Geospatial Dashboard</h2>
@@ -133,10 +134,31 @@
                 Welcome, <span class="font-semibold text-blue-600">Admin</span>
             </div>
         </header>
+        <section class="px-6 pb-6 mt-2">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- pH Chart -->
+                <div class="bg-white border rounded-lg p-4 shadow-sm">
+                    <h4 class="text-sm font-semibold mb-2">pH Level</h4>
+                    <canvas id="phChart"></canvas>
+                </div>
+
+                <!-- Temperature Chart -->
+                <div class="bg-white border rounded-lg p-4 shadow-sm">
+                    <h4 class="text-sm font-semibold mb-2">Water Temperature (°C)</h4>
+                    <canvas id="tempChart"></canvas>
+                </div>
+
+                <!-- Ammonia Chart -->
+                <div class="bg-white border rounded-lg p-4 shadow-sm">
+                    <h4 class="text-sm font-semibold mb-2">Ammonia (ppm)</h4>
+                    <canvas id="ammoniaChart"></canvas>
+                </div>
+            </div>
+        </section>
 
 
         <!-- Map and Environmental Panel -->
-        <section class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section class="px-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div id="map"></div>
 
             <div class="panel">
@@ -238,6 +260,58 @@
             });
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const phLabels = @json($labels);
+        const phData = @json($phData);
+        const tempData = @json($tempData);
+        const ammoniaData = @json($ammoniaData);
+
+        new Chart(document.getElementById('phChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: phLabels,
+                datasets: [{
+                    label: 'pH Level',
+                    data: phData,
+                    borderColor: 'blue',
+                    backgroundColor: 'rgba(0,0,255,0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            }
+        });
+
+        new Chart(document.getElementById('tempChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: phLabels,
+                datasets: [{
+                    label: 'Water Temperature (°C)',
+                    data: tempData,
+                    borderColor: 'orange',
+                    backgroundColor: 'rgba(255,165,0,0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            }
+        });
+
+        new Chart(document.getElementById('ammoniaChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: phLabels,
+                datasets: [{
+                    label: 'Ammonia (ppm)',
+                    data: ammoniaData,
+                    borderColor: 'red',
+                    backgroundColor: 'rgba(255,0,0,0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            }
+        });
+    </script>   
 
 </body>
 </html>
