@@ -12,71 +12,70 @@ class UserController extends Controller
     /**
      * Show user dashboard
      */
-public function dashboard()
-{
-    $userId = Auth::id();
+    public function dashboard()
+    {
+        $userId = Auth::id();
 
-    // Get all ponds for this user
-    $ponds = Pond::where('user_id', $userId)->latest()->get();
+        // Get all ponds for this user
+        $ponds = Pond::where('user_id', $userId)->latest()->get();
 
-    // Get all payloads for the user's ponds
-    $payLoads = Payload::whereIn('pond_id', $ponds->pluck('id'))
-                ->orderBy('created_at', 'asc')
-                ->get();
+        // Get all payloads for the user's ponds
+        $payLoads = Payload::whereIn('pond_id', $ponds->pluck('id'))
+                    ->orderBy('created_at', 'asc')
+                    ->get();
 
-    $labels = [];
-    $phData = [];
-    $tempData = [];
-    $ammoniaData = [];
+        $labels = [];
+        $phData = [];
+        $tempData = [];
+        $ammoniaData = [];
 
-    foreach ($payLoads as $data) {
-       $decoded = $data->payload; // no json_decode needed
+        foreach ($payLoads as $data) {
+            $decoded = $data->payload; // already array
 
-        if (!$decoded) continue; // skip invalid JSON
+            if (!$decoded) continue;
 
-        $labels[] = $data->created_at->format('H:i:s');
-$phData[] = $decoded['ph'];
-$tempData[] = $decoded['water_temp'];
-$ammoniaData[] = $decoded['ammonia'];
+            $labels[] = $data->created_at->format('H:i:s');
+            $phData[] = $decoded['ph'] ?? 0;
+            $tempData[] = $decoded['water_temp'] ?? 0;
+            $ammoniaData[] = $decoded['ammonia'] ?? 0;
+        }
 
+        // Latest payload for status
+        $latest = $payLoads->last();
+        $status = 'No Data';
+
+        if ($latest) {
+            $latestDecoded = $latest->payload; // already array
+
+            $status = 'Normal';
+
+            if (
+                $latestDecoded['ph'] < 6 || $latestDecoded['ph'] > 9 ||
+                $latestDecoded['water_temp'] > 35 ||
+                $latestDecoded['ammonia'] > 0.05
+            ) {
+                $status = 'Warning';
+            }
+
+            if (
+                $latestDecoded['ph'] < 5 || $latestDecoded['ph'] > 10 ||
+                $latestDecoded['water_temp'] > 38 ||
+                $latestDecoded['ammonia'] > 0.1
+            ) {
+                $status = 'Critical';
+            }
+        }
+
+        return view('dashboard', compact(
+            'ponds',
+            'payLoads',
+            'labels',
+            'phData',
+            'tempData',
+            'ammoniaData',
+            'status'
+        ));
     }
-
-    // Latest payload for status
-   $latest = $payLoads->last();
-$status = 'No Data';
-
-if ($latest) {
-    $latestDecoded = $latest->payload; // already array
-
-    $status = 'Normal';
-
-    if (
-        $latestDecoded['ph'] < 6 || $latestDecoded['ph'] > 9 ||
-        $latestDecoded['water_temp'] > 35 ||
-        $latestDecoded['ammonia'] > 0.05
-    ) {
-        $status = 'Warning';
-    }
-
-    if (
-        $latestDecoded['ph'] < 5 || $latestDecoded['ph'] > 10 ||
-        $latestDecoded['water_temp'] > 38 ||
-        $latestDecoded['ammonia'] > 0.1
-    ) {
-        $status = 'Critical';
-    }
-}
-
-    return view('dashboard', compact(
-        'ponds',
-        'payLoads',
-        'labels',
-        'phData',
-        'tempData',
-        'ammoniaData',
-        'status'
-    ));
-}
 
 
     /**
