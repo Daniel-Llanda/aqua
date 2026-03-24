@@ -19,6 +19,7 @@ class AdminController extends Controller
         $payLoads = Payload::whereIn('pond_id', $ponds->pluck('id'))
             ->orderBy('created_at', 'asc')
             ->get();
+            
 
         $labels = [];
         $phData = [];
@@ -30,7 +31,9 @@ class AdminController extends Controller
 
             if (!$decoded) continue;
 
-            $labels[] = $data->created_at->format('H:i:s');
+            $labels[] = $data->created_at 
+    ? $data->created_at->format('H:i:s') 
+    : '';
             $phData[] = $decoded['ph'] ?? 0;
             $tempData[] = $decoded['water_temp'] ?? 0;
             $ammoniaData[] = $decoded['ammonia'] ?? 0;
