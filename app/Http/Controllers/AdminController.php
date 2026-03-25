@@ -35,8 +35,8 @@ class AdminController extends Controller
     ? $data->created_at->format('H:i:s') 
     : '';
             $phData[] = $decoded['ph'] ?? 0;
-            $tempData[] = $decoded['water_temp'] ?? 0;
-            $ammoniaData[] = $decoded['ammonia'] ?? 0;
+            $tempData[] = $decoded['temperature'] ?? 0;
+            $ammoniaData[] = $decoded['mq_ratio'] ?? 0;
         }
 
         return view('admin.dashboard', compact(
