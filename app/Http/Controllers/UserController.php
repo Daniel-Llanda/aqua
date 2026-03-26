@@ -53,16 +53,16 @@ class UserController extends Controller
 
             if (
                 $latestDecoded['ph'] < 6 || $latestDecoded['ph'] > 9 ||
-                $latestDecoded['water_temp'] > 35 ||
-                $latestDecoded['ammonia'] > 0.05
+                $latestDecoded['temperature'] > 35 ||
+                $latestDecoded['mq_ratio'] > 0.05
             ) {
                 $status = 'Warning';
             }
 
             if (
                 $latestDecoded['ph'] < 5 || $latestDecoded['ph'] > 10 ||
-                $latestDecoded['water_temp'] > 38 ||
-                $latestDecoded['ammonia'] > 0.1
+                $latestDecoded['temperature'] > 38 ||
+                $latestDecoded['mq_ratio'] > 0.1
             ) {
                 $status = 'Critical';
             }
