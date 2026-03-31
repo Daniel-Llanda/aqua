@@ -254,8 +254,6 @@
                 $('#water-level').text(temp + ' °C');
                 $('#device-status').text(pH);
                 $('#notification-message').html(`
-                    Temp: ${temp} °C<br>
-                    pH: ${pH}<br>
                     Ammonia: ${ammonia} ppm
                 `);
 
