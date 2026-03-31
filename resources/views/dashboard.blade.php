@@ -246,9 +246,9 @@
             $('#ai-suggestion').text('AI analyzing pond #' + selectedPond.id + '...');
 
             setTimeout(() => {
-                let temp = parseFloat(sensorPayload.water_temp);
+                let temp = parseFloat(sensorPayload.temperature);
                 let pH = parseFloat(sensorPayload.ph);
-                let ammonia = parseFloat(sensorPayload.ammonia);
+                let ammonia = parseFloat(sensorPayload.mq_ratio);
 
                 // Update KPI cards
                 $('#water-level').text(temp + ' °C');
