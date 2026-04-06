@@ -70,6 +70,12 @@
                             No telemetry data found for this pond.
                         </p>
                     @endforelse
+
+                    @if($payloads && $payloads->hasPages())
+                        <div class="mt-4">
+                            {{ $payloads->links() }}
+                        </div>
+                    @endif
                 </div>
             @endif
         </div>

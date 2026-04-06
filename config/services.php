@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'semaphore' => [
+        'key' => env('SEMAPHORE_API_KEY'),
+        'sender' => env('SEMAPHORE_SENDER_NAME'),
+        'alert_number' => env('SEMAPHORE_ALERT_NUMBER'),
+    ],
+
 ];
+

@@ -17,7 +17,7 @@
     <x-sidebar.link
         title="Pond Info"
         href="{{ route('pond-info') }}"
-        :isActive="request()->routeIs('pond-info')"
+        :isActive="request()->routeIs('pond-info') || request()->routeIs('pond.create')"
     >
         <x-slot name="icon">
             <x-icons.dashboard class="flex-shrink-0 w-6 h-6" aria-hidden="true" />

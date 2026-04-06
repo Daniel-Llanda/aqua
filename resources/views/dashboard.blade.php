@@ -108,7 +108,11 @@
 <script>
     // Payloads from database (passed via Blade)
     // Format: { pond_id: {ph, water_temp, ammonia}, ... }
+
     window.sensorPayloads = {!! json_encode($payloads ?? []) !!};
+    const smsAlertNumber = @json(config('services.semaphore.alert_number'));
+    const smsSendUrl = @json(route('sms.send'));
+    const csrfToken = @json(csrf_token());
 
     $(document).ready(function () {
 
@@ -125,6 +129,24 @@
                     clearInterval(interval);
                 }
             }, speed);
+        }
+
+        function sendTempAlertSms(pondId, temp) {
+            if (!smsAlertNumber) return;
+
+            $.ajax({
+                url: smsSendUrl,
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                data: {
+                    number: smsAlertNumber,
+                    message: `ALERT: Pond #${pondId} high water temperature detected (${temp}°C).`
+                }
+            }).fail(function () {
+                console.error('Failed to send high-temperature SMS alert.');
+            });
         }
 
         // ================= POND SELECTION =================
@@ -203,6 +225,8 @@
                 } else if (temp > 32) {
                     issues.push('High water temperature');
                     actions.push('Increase aeration and provide shade.');
+                    sendTempAlertSms(selectedPond.id, temp);
+                    alert('Warning: High water temperature detected! Immediate action recommended.');
                 }
 
                 // pH rules
@@ -233,6 +257,8 @@
             }, 1000);
         });
     });
+
+    
 </script>
 
 

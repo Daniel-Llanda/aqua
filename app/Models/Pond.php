@@ -15,6 +15,8 @@ class Pond extends Model
         'fish_type',
         'hatching_date',
         'harvest_date',
+        'quantity_of_hatching',
+        'quantity_of_harvest',
     ];
 
 }

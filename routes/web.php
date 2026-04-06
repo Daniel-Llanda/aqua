@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\SmsController;
 use App\Models\Admin;
 
 /*
@@ -30,6 +31,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/pond-info', [UserController::class, 'pondInfo'])
         ->name('pond-info');
 
+    Route::get('/pond-info/add', [UserController::class, 'createPond'])
+        ->name('pond.create');
+
     Route::post('/pond-info', [UserController::class, 'storePond'])
         ->name('pond.store');
 
@@ -38,6 +42,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/payload', [UserController::class, 'getPayload'])
         ->name('get.payload');
+
+    Route::post('/sms/send', [SmsController::class, 'sendSms'])
+        ->name('sms.send');
 
 
 });

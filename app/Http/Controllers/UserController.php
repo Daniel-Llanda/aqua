@@ -45,6 +45,14 @@ class UserController extends Controller
         return view('pond-info', compact('ponds'));
     }
 
+    /**
+     * Show add pond form page
+     */
+    public function createPond()
+    {
+        return view('pond-create');
+    }
+
     public function storePond(Request $request)
     {
         $request->validate([
@@ -53,6 +61,8 @@ class UserController extends Controller
             'fish_type.*' => 'string',
             'hatching_date' => 'required|date',
             'harvest_date' => 'required|date|after:hatching_date',
+            'quantity_of_hatching' => 'required|integer|min:0',
+            'quantity_of_harvest' => 'required|integer|min:0',
         ]);
 
         Pond::create([
@@ -61,9 +71,11 @@ class UserController extends Controller
             'fish_type' => json_encode($request->fish_type), // store as JSON
             'hatching_date' => $request->hatching_date,
             'harvest_date' => $request->harvest_date,
+            'quantity_of_hatching' => $request->quantity_of_hatching,
+            'quantity_of_harvest' => $request->quantity_of_harvest,
         ]);
 
-        return redirect()->back()->with('success', 'Fish pond information saved successfully.');
+        return redirect()->route('pond-info')->with('success', 'Fish pond information saved successfully.');
     }
     public function telemetrylog(Request $request)
     {
@@ -73,13 +85,14 @@ class UserController extends Controller
         $ponds = Pond::where('user_id', $user->id)->get();
 
         // If a pond is selected, load its payloads
-        $payloads = collect();
+        $payloads = null;
 
         if ($request->filled('pond_id')) {
             $payloads = Payload::where('pond_id', $request->pond_id)
                 ->where('user_id', $user->id)
                 ->latest()
-                ->get();
+                ->paginate(5)
+                ->withQueryString();
         }
 
         return view('telemetrylog', compact('ponds', 'payloads'));
