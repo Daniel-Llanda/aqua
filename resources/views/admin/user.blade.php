@@ -45,14 +45,15 @@
     </style>
 </head>
 
-<body class="bg-gray-100 font-sans antialiased flex min-h-screen">
+<body class="bg-gray-100 font-sans antialiased min-h-screen">
     <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fomantic-ui/2.9.2/semantic.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
     <script src="https://cdn.datatables.net/2.3.6/js/dataTables.semanticui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-blue-600 text-white flex flex-col">
+    <aside class="fixed inset-y-0 left-0 z-30 h-screen w-64 overflow-y-auto bg-blue-600 text-white flex flex-col">
         <div class="px-6 py-6 border-b border-blue-500">
             <h1 class="text-2xl font-bold">Admin Panel</h1>
         </div>
@@ -75,7 +76,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col">
+    <main class="ml-64 min-h-screen min-w-0 flex flex-col">
         <!-- Top Bar -->
         <header class="bg-white shadow-sm px-8 py-4 flex justify-between items-center">
             <h2 class="text-xl font-semibold text-gray-800">Dashboard</h2>
@@ -142,7 +143,7 @@
 <div id="userModal"
      class="fixed inset-0 flex items-center justify-center hidden z-50">
 
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-5xl max-h-screen overflow-y-auto">
 
         <!-- Header -->
         <div class="flex justify-between items-center px-6 py-4 border-b">
@@ -165,7 +166,58 @@
             <!-- Ponds -->
             <div>
                 <h4 class="font-semibold mt-4 mb-2">Ponds</h4>
-                <ul id="modalUserPonds" class="list-disc pl-5 space-y-1"></ul>
+                <div id="modalUserPonds" class="space-y-2"></div>
+            </div>
+
+            <div id="adminPondTelemetrySection" class="hidden border-t pt-4">
+                <div class="mb-4">
+                    <h4 id="adminSelectedPondTitle" class="font-semibold text-gray-800"></h4>
+                    <p class="text-sm text-gray-500">Telemetry charts are scoped to the selected pond only.</p>
+                </div>
+
+                <p id="adminPondNoTelemetry" class="hidden text-sm text-gray-500">
+                    No telemetry data found for this pond.
+                </p>
+
+                <div id="adminPondCharts" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="border rounded-lg p-4">
+                        <h5 class="text-sm font-semibold mb-2">pH Level</h5>
+                        <canvas id="adminPhChart"></canvas>
+                    </div>
+
+                    <div class="border rounded-lg p-4">
+                        <h5 class="text-sm font-semibold mb-2">Water Temperature (°C)</h5>
+                        <canvas id="adminTempChart"></canvas>
+                    </div>
+
+                    <div class="border rounded-lg p-4">
+                        <h5 class="text-sm font-semibold mb-2">Ammonia (ppm)</h5>
+                        <canvas id="adminAmmoniaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="adminPondHarvestSection" class="hidden border-t pt-4">
+                <div class="mb-4">
+                    <h4 class="font-semibold text-gray-800">Harvest Details</h4>
+                    <p class="text-sm text-gray-500">Harvest information below is scoped to the selected pond only.</p>
+                </div>
+
+                <div id="adminPondHarvestEmpty"
+                     class="hidden rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                    No harvest details are available for this pond yet.
+                </div>
+
+                <div id="adminPondHarvestContent" class="hidden space-y-4">
+                    <div id="adminPondHarvestSummary" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"></div>
+
+                    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        <div id="adminPondActiveHarvestPanel" class="hidden rounded-xl border border-gray-200 p-4"></div>
+                        <div id="adminPondLatestHarvestPanel" class="hidden rounded-xl border border-gray-200 p-4"></div>
+                    </div>
+
+                    <div id="adminPondHistoryPanel" class="hidden rounded-xl border border-gray-200 p-4"></div>
+                </div>
             </div>
 
         </div>
@@ -232,9 +284,342 @@
 </div>
 
     <script>
+        const adminPondTelemetryUrlTemplate = @json($pondTelemetryUrlTemplate);
+
+        let currentUserId = null;
+        let currentUserPonds = {};
+        let adminPondCharts = {
+            ph: null,
+            temp: null,
+            ammonia: null,
+        };
+
+        function resetAdminPondTelemetry() {
+            $('#adminPondTelemetrySection').addClass('hidden');
+            $('#adminPondNoTelemetry').addClass('hidden').text('No telemetry data found for this pond.');
+            $('#adminPondCharts').removeClass('hidden');
+            $('#adminSelectedPondTitle').text('');
+            resetAdminPondHarvest();
+        }
+
+        function resetAdminPondHarvest() {
+            $('#adminPondHarvestSection').addClass('hidden');
+            $('#adminPondHarvestEmpty').addClass('hidden').text('No harvest details are available for this pond yet.');
+            $('#adminPondHarvestContent').addClass('hidden');
+            $('#adminPondHarvestSummary').empty();
+            $('#adminPondActiveHarvestPanel').addClass('hidden').empty();
+            $('#adminPondLatestHarvestPanel').addClass('hidden').empty();
+            $('#adminPondHistoryPanel').addClass('hidden').empty();
+        }
+
+        function buildAdminLineChart(canvasId, label, borderColor, backgroundColor) {
+            return new Chart(document.getElementById(canvasId).getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        data: [],
+                        borderColor: borderColor,
+                        backgroundColor: backgroundColor,
+                        tension: 0.3,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                        },
+                    },
+                },
+            });
+        }
+
+        function ensureAdminPondCharts() {
+            if (adminPondCharts.ph) {
+                return;
+            }
+
+            adminPondCharts.ph = buildAdminLineChart('adminPhChart', 'pH Level', 'blue', 'rgba(0,0,255,0.1)');
+            adminPondCharts.temp = buildAdminLineChart('adminTempChart', 'Water Temperature (°C)', 'orange', 'rgba(255,165,0,0.1)');
+            adminPondCharts.ammonia = buildAdminLineChart('adminAmmoniaChart', 'Ammonia (ppm)', 'red', 'rgba(255,0,0,0.1)');
+        }
+
+        function updateAdminPondChart(chart, labels, data) {
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = data;
+            chart.update();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatKg(value, fallback = 'N/A') {
+            if (value === null || value === undefined || value === '') {
+                return fallback;
+            }
+
+            return `${Number(value).toFixed(2)} kg`;
+        }
+
+        function formatVariance(value) {
+            if (value === null || value === undefined || value === '') {
+                return 'Pending';
+            }
+
+            const numericValue = Number(value);
+            return `${numericValue >= 0 ? '+' : ''}${numericValue.toFixed(2)} kg`;
+        }
+
+        function renderHarvestSummaryCard(label, value, helper) {
+            return `
+                <div class="rounded-xl border border-gray-200 bg-white p-4">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">${escapeHtml(label)}</p>
+                    <p class="mt-3 text-xl font-semibold text-gray-900">${escapeHtml(value)}</p>
+                    <p class="mt-1 text-sm text-gray-500">${escapeHtml(helper)}</p>
+                </div>
+            `;
+        }
+
+        function renderSpeciesHarvestTable(speciesBreakdown, emptyMessage) {
+            if (!speciesBreakdown || speciesBreakdown.length === 0) {
+                return `<p class="text-sm text-gray-500">${escapeHtml(emptyMessage)}</p>`;
+            }
+
+            const rows = speciesBreakdown.map((item) => `
+                <tr class="border-t border-gray-100">
+                    <td class="px-3 py-2 text-sm font-medium text-gray-700">${escapeHtml(item.species)}</td>
+                    <td class="px-3 py-2 text-sm text-gray-600">${escapeHtml(formatKg(item.expectedHarvestKg))}</td>
+                    <td class="px-3 py-2 text-sm text-gray-600">${escapeHtml(formatKg(item.harvestKg, 'Pending'))}</td>
+                    <td class="px-3 py-2 text-sm text-gray-600">${escapeHtml(formatVariance(item.varianceKg))}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full rounded-lg border border-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Species</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Expected</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Harvested</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Variance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderHarvestPanel(title, snapshot, emptyMessage) {
+            if (!snapshot) {
+                return `
+                    <p class="text-sm font-semibold text-gray-700">${escapeHtml(title)}</p>
+                    <p class="mt-3 text-sm text-gray-500">${escapeHtml(emptyMessage)}</p>
+                `;
+            }
+
+            return `
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">${escapeHtml(title)}</p>
+                        <h5 class="mt-2 text-lg font-semibold text-gray-900">Cycle #${escapeHtml(snapshot.cycleNumber)}</h5>
+                    </div>
+                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700">
+                        ${escapeHtml(snapshot.harvestStatus)}
+                    </span>
+                </div>
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Harvest Date</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900">${escapeHtml(snapshot.harvestDate ?? 'Not set')}</p>
+                    </div>
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Completed</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900">${escapeHtml(snapshot.completedAt ?? 'Not completed')}</p>
+                    </div>
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Expected Total</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900">${escapeHtml(formatKg(snapshot.expectedTotalKg))}</p>
+                    </div>
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Actual Total</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900">${escapeHtml(formatKg(snapshot.actualTotalKg, 'Pending'))}</p>
+                    </div>
+                </div>
+                ${renderSpeciesHarvestTable(snapshot.speciesBreakdown, 'No species quantities recorded for this cycle yet.')}
+            `;
+        }
+
+        function renderHarvestHistory(history) {
+            if (!history || history.length === 0) {
+                return `
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Completed Harvest History</p>
+                    <p class="mt-3 text-sm text-gray-500">No completed harvest history is available for this pond yet.</p>
+                `;
+            }
+
+            const rows = history.map((item) => `
+                <tr class="border-t border-gray-100">
+                    <td class="px-3 py-2 text-sm font-medium text-gray-700">Cycle #${escapeHtml(item.cycleNumber)}</td>
+                    <td class="px-3 py-2 text-sm text-gray-600">${escapeHtml(item.harvestDate ?? 'Not set')}</td>
+                    <td class="px-3 py-2 text-sm text-gray-600">${escapeHtml(item.completedAt ?? 'Not completed')}</td>
+                    <td class="px-3 py-2 text-sm text-gray-600">${escapeHtml(formatKg(item.actualTotalKg))}</td>
+                    <td class="px-3 py-2 text-sm text-gray-600">${escapeHtml(formatVariance(item.varianceKg))}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Completed Harvest History</p>
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full rounded-lg border border-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Cycle</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Harvest Date</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Completed</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Harvested</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Variance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function showAdminPondHarvest(pond, harvest) {
+            $('#adminPondHarvestSection').removeClass('hidden');
+
+            if (!harvest || !harvest.hasData) {
+                $('#adminPondHarvestContent').addClass('hidden');
+                $('#adminPondHarvestEmpty')
+                    .removeClass('hidden')
+                    .text(`No harvest details are available for Pond #${pond.id} yet.`);
+                return;
+            }
+
+            $('#adminPondHarvestEmpty').addClass('hidden');
+            $('#adminPondHarvestContent').removeClass('hidden');
+
+            const summary = harvest.summary ?? {};
+            const summaryCards = [
+                renderHarvestSummaryCard(
+                    'Active Cycle',
+                    harvest.activeCycle ? `Cycle #${harvest.activeCycle.cycleNumber}` : 'No active cycle',
+                    harvest.activeCycle ? (harvest.activeCycle.harvestStatus ?? 'Monitoring') : 'Waiting for the next cycle'
+                ),
+                renderHarvestSummaryCard(
+                    'Latest Harvest',
+                    harvest.latestHarvest ? formatKg(harvest.latestHarvest.actualTotalKg, 'Pending') : 'No recorded harvest',
+                    harvest.latestHarvest ? `Cycle #${harvest.latestHarvest.cycleNumber}` : 'No completed harvest yet'
+                ),
+                renderHarvestSummaryCard(
+                    'Completed Cycles',
+                    String(summary.completedCycles ?? 0),
+                    'Harvested cycles for this pond'
+                ),
+                renderHarvestSummaryCard(
+                    'Total Harvested',
+                    formatKg(summary.totalHarvestedKg, '0.00 kg'),
+                    summary.latestCompletedAt ? `Latest completion ${summary.latestCompletedAt}` : 'No completed harvest yet'
+                ),
+            ];
+
+            $('#adminPondHarvestSummary').html(summaryCards.join(''));
+
+            $('#adminPondActiveHarvestPanel')
+                .removeClass('hidden')
+                .html(renderHarvestPanel(
+                    'Active Cycle Harvest Plan',
+                    harvest.activeCycle,
+                    'This pond does not have an active cycle right now.'
+                ));
+
+            $('#adminPondLatestHarvestPanel')
+                .removeClass('hidden')
+                .html(renderHarvestPanel(
+                    'Latest Harvest Record',
+                    harvest.latestHarvest,
+                    'No completed harvest record is available for this pond yet.'
+                ));
+
+            $('#adminPondHistoryPanel')
+                .removeClass('hidden')
+                .html(renderHarvestHistory(harvest.recentHistory));
+        }
+
+        async function fetchAdminPondDetails(pond) {
+            const pondId = String(pond.id);
+            const url = adminPondTelemetryUrlTemplate
+                .replace('__USER__', currentUserId)
+                .replace('__POND__', pondId);
+
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Unable to load pond telemetry.');
+            }
+
+            return response.json();
+        }
+
+        function showAdminPondTelemetry(pond, series) {
+            const chartSeries = {
+                labels: series.labels && series.labels.length ? series.labels : ['No readings yet'],
+                phData: series.phData && series.phData.length ? series.phData : [0],
+                tempData: series.tempData && series.tempData.length ? series.tempData : [0],
+                ammoniaData: series.ammoniaData && series.ammoniaData.length ? series.ammoniaData : [0],
+                hasTelemetry: Boolean(series.hasTelemetry),
+            };
+
+            $('#adminSelectedPondTitle').text(`Pond #${pond.id} Water Quality Trends`);
+            $('#adminPondTelemetrySection').removeClass('hidden');
+
+            if (chartSeries.hasTelemetry) {
+                $('#adminPondNoTelemetry').addClass('hidden');
+            } else {
+                $('#adminPondNoTelemetry')
+                    .removeClass('hidden')
+                    .text('No telemetry data yet. Showing default zero values until readings are received.');
+            }
+
+            $('#adminPondCharts').removeClass('hidden');
+
+            ensureAdminPondCharts();
+            updateAdminPondChart(adminPondCharts.ph, chartSeries.labels, chartSeries.phData);
+            updateAdminPondChart(adminPondCharts.temp, chartSeries.labels, chartSeries.tempData);
+            updateAdminPondChart(adminPondCharts.ammonia, chartSeries.labels, chartSeries.ammoniaData);
+        }
+
         $(document).on('click', '.view-user', function () {
 
             const user = $(this).data('user');
+            currentUserId = user.id;
+            currentUserPonds = {};
+            resetAdminPondTelemetry();
 
             // Fill user info
             $('#modalUserName').text(user.name);
@@ -247,15 +632,19 @@
 
             if (user.ponds && user.ponds.length > 0) {
                 user.ponds.forEach(pond => {
+                    currentUserPonds[String(pond.id)] = pond;
                     pondsList.append(`
-                        <li>
-                            Pond #${pond.id} — ${pond.hectares} ha
-                        </li>
+                        <button type="button"
+                            class="view-pond-telemetry w-full flex items-center justify-between gap-3 rounded border border-blue-100 bg-blue-50 px-4 py-2 text-left text-sm text-blue-700 hover:bg-blue-100 transition"
+                            data-pond-id="${pond.id}">
+                            <span>Pond #${pond.id} — ${pond.hectares} ha</span>
+                            <span class="font-semibold">View Pond</span>
+                        </button>
                     `);
                 });
             } else {
                 pondsList.append(`
-                    <li class="text-gray-500">No ponds assigned.</li>
+                    <p class="text-gray-500">No ponds assigned.</p>
                 `);
             }
 
@@ -263,9 +652,49 @@
             $('#userModal, #userModalOverlay').removeClass('hidden');
         });
 
+        $(document).on('click', '.view-pond-telemetry', async function () {
+            const pondId = String($(this).data('pond-id'));
+            const pond = currentUserPonds[pondId];
+
+            if (!pond) {
+                return;
+            }
+
+            $('.view-pond-telemetry')
+                .removeClass('bg-blue-600 text-white')
+                .addClass('bg-blue-50 text-blue-700');
+
+            $(this)
+                .removeClass('bg-blue-50 text-blue-700')
+                .addClass('bg-blue-600 text-white');
+
+            $('#adminSelectedPondTitle').text(`Pond #${pond.id} Water Quality Trends`);
+            $('#adminPondTelemetrySection').removeClass('hidden');
+            $('#adminPondCharts').addClass('hidden');
+            $('#adminPondNoTelemetry').removeClass('hidden').text('Loading telemetry...');
+            $('#adminPondHarvestSection').removeClass('hidden');
+            $('#adminPondHarvestContent').addClass('hidden');
+            $('#adminPondHarvestEmpty').removeClass('hidden').text('Loading harvest details...');
+
+            try {
+                const pondDetails = await fetchAdminPondDetails(pond);
+                showAdminPondTelemetry(pond, pondDetails);
+                showAdminPondHarvest(pond, pondDetails.harvest);
+            } catch (error) {
+                $('#adminPondCharts').addClass('hidden');
+                $('#adminPondNoTelemetry').removeClass('hidden').text('Unable to load telemetry for this pond.');
+                $('#adminPondHarvestSection').removeClass('hidden');
+                $('#adminPondHarvestContent').addClass('hidden');
+                $('#adminPondHarvestEmpty')
+                    .removeClass('hidden')
+                    .text('Unable to load harvest details for this pond.');
+            }
+        });
+
         // Close modal
         $('#closeModal, #closeModalBtn, #userModalOverlay').on('click', function () {
             $('#userModal, #userModalOverlay').addClass('hidden');
+            resetAdminPondTelemetry();
         });
         $('#openAddUserModal').on('click', function() {
             $('#addUserModal, #addUserOverlay').removeClass('hidden');

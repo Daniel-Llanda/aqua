@@ -13,8 +13,18 @@ class Pond extends Model
         'user_id',
         'hectares',
         'fish_type',
-        'hatching_date',
-        'harvest_date',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'fish_type' => 'array',
+        ];
+    }
+
+    public function cycles()
+    {
+        return $this->hasMany(PondCycle::class);
+    }
 
 }

@@ -11,26 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('payloads', function (Blueprint $table) {
+        Schema::create('sms_alert_cooldowns', function (Blueprint $table) {
             $table->id();
-
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('pond_id');
-
-            $table->json('payload');
+            $table->string('condition_key', 32);
+            $table->timestamp('last_sent_at');
             $table->timestamps();
 
-            $table->foreign('user_id')
-                ->references('id')
-                ->on('users')
-                ->onDelete('cascade');
-
-            $table->foreign('pond_id')
-                ->references('id')
-                ->on('ponds')
-                ->onDelete('cascade');
+            $table->unique(['user_id', 'pond_id', 'condition_key'], 'sms_alert_cooldowns_unique');
+            $table->index(['user_id', 'pond_id', 'last_sent_at'], 'sms_alert_cooldowns_lookup');
         });
-
     }
 
     /**
@@ -38,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('payloads');
+        Schema::dropIfExists('sms_alert_cooldowns');
     }
 };

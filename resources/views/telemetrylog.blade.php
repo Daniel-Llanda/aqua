@@ -70,6 +70,12 @@
                             No telemetry data found for this pond.
                         </p>
                     @endforelse
+
+                    @if($payloads instanceof \Illuminate\Contracts\Pagination\Paginator && $payloads->hasPages())
+                        <div class="mt-6">
+                            {{ $payloads->onEachSide(1)->links() }}
+                        </div>
+                    @endif
                 </div>
             @endif
         </div>

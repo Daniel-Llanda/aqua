@@ -11,17 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ponds', function (Blueprint $table) {
+        Schema::create('otp_verifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->decimal('hectares', 5, 2);
-            $table->json('fish_type');
-            $table->date('hatching_date');
-            $table->date('harvest_date');
-
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('phone', 11);
+            $table->string('otp_code', 6);
+            $table->timestamp('expires_at');
+            $table->boolean('is_verified')->default(false);
             $table->timestamps();
         });
-
     }
 
     /**
@@ -29,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ponds');
+        Schema::dropIfExists('otp_verifications');
     }
 };

@@ -99,10 +99,10 @@
     </style>
 </head>
 
-<body class="flex min-h-screen bg-gray-100">
+<body class="min-h-screen bg-gray-100">
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-blue-600 text-white flex flex-col">
+    <aside class="fixed inset-y-0 left-0 z-30 h-screen w-64 overflow-y-auto bg-blue-600 text-white flex flex-col">
         <div class="px-6 py-6 border-b border-blue-500">
             <h1 class="text-2xl font-bold">Admin Panel</h1>
         </div>
@@ -124,7 +124,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col">
+    <main class="ml-64 min-h-screen min-w-0 flex flex-col">
 
 
         <!-- Top Bar -->
@@ -134,31 +134,99 @@
                 Welcome, <span class="font-semibold text-blue-600">Admin</span>
             </div>
         </header>
-        <section class="px-6 pb-6 mt-2">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- pH Chart -->
-                <div class="bg-white border rounded-lg p-4 shadow-sm">
-                    <h4 class="text-sm font-semibold mb-2">pH Level</h4>
-                    <canvas id="phChart"></canvas>
-                </div>
 
-                <!-- Temperature Chart -->
-                <div class="bg-white border rounded-lg p-4 shadow-sm">
-                    <h4 class="text-sm font-semibold mb-2">Water Temperature (°C)</h4>
-                    <canvas id="tempChart"></canvas>
-                </div>
+        <!-- System Summary Cards -->
+        <section class="px-6 pt-6">
+            @php
+                $metricsByLabel = collect($dashboardMetrics)->keyBy('label');
+                $primaryMetrics = [
+                    [
+                        'label' => 'Total Users',
+                        'code' => 'US',
+                        'accent' => 'bg-blue-600',
+                        'border' => 'border-blue-200',
+                        'background' => 'bg-blue-50',
+                        'text' => 'text-blue-700',
+                    ],
+                    [
+                        'label' => 'Total Ponds',
+                        'code' => 'PD',
+                        'accent' => 'bg-cyan-600',
+                        'border' => 'border-cyan-200',
+                        'background' => 'bg-cyan-50',
+                        'text' => 'text-cyan-700',
+                    ],
+                ];
+                $supportMetrics = [
+                    ['label' => 'Active Ponds', 'code' => 'AP', 'accent' => 'bg-sky-500'],
+                    ['label' => 'Active Cycles', 'code' => 'AC', 'accent' => 'bg-indigo-500'],
+                    ['label' => 'Completed Cycles', 'code' => 'CC', 'accent' => 'bg-slate-500'],
+                ];
+            @endphp
 
-                <!-- Ammonia Chart -->
-                <div class="bg-white border rounded-lg p-4 shadow-sm">
-                    <h4 class="text-sm font-semibold mb-2">Ammonia (ppm)</h4>
-                    <canvas id="ammoniaChart"></canvas>
+            <div class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-wide text-blue-600">System Overview</p>
+                    <h3 class="text-2xl font-bold text-gray-900">Operational Summary</h3>
                 </div>
+                <p class="text-sm text-gray-500">Live totals from users, ponds, and production cycles.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                @foreach($primaryMetrics as $card)
+                    @php($metric = $metricsByLabel->get($card['label']))
+                    @if($metric)
+                        <div class="bg-white border {{ $card['border'] }} rounded-lg p-6 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                                        {{ $metric['label'] }}
+                                    </p>
+                                    <p class="mt-3 text-5xl font-bold text-gray-900">
+                                        {{ number_format($metric['value']) }}
+                                    </p>
+                                </div>
+                                <div class="{{ $card['background'] }} {{ $card['text'] }} rounded-lg px-3 py-2 text-sm font-bold">
+                                    {{ $card['code'] }}
+                                </div>
+                            </div>
+                            <div class="mt-5 flex items-center gap-3">
+                                <span class="h-2 w-16 rounded-full {{ $card['accent'] }}"></span>
+                                <p class="text-sm text-gray-500">
+                                    {{ $metric['description'] }}
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach($supportMetrics as $card)
+                    @php($metric = $metricsByLabel->get($card['label']))
+                    @if($metric)
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-xs font-bold text-gray-500">{{ $card['code'] }}</span>
+                                <span class="h-2 w-8 rounded-full {{ $card['accent'] }}"></span>
+                            </div>
+                            <p class="mt-4 text-2xl font-bold text-gray-900">
+                                {{ number_format($metric['value']) }}
+                            </p>
+                            <p class="mt-1 text-sm font-semibold text-gray-700">
+                                {{ $metric['label'] }}
+                            </p>
+                            <p class="mt-2 text-xs leading-5 text-gray-500">
+                                {{ $metric['description'] }}
+                            </p>
+                        </div>
+                    @endif
+                @endforeach
             </div>
         </section>
 
-
         <!-- Map and Environmental Panel -->
-        <section class="px-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section class="px-6 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div id="map"></div>
 
             <div class="panel">
@@ -260,58 +328,6 @@
             });
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        const phLabels = @json($labels);
-        const phData = @json($phData);
-        const tempData = @json($tempData);
-        const ammoniaData = @json($ammoniaData);
-
-        new Chart(document.getElementById('phChart').getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: phLabels,
-                datasets: [{
-                    label: 'pH Level',
-                    data: phData,
-                    borderColor: 'blue',
-                    backgroundColor: 'rgba(0,0,255,0.1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            }
-        });
-
-        new Chart(document.getElementById('tempChart').getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: phLabels,
-                datasets: [{
-                    label: 'Water Temperature (°C)',
-                    data: tempData,
-                    borderColor: 'orange',
-                    backgroundColor: 'rgba(255,165,0,0.1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            }
-        });
-
-        new Chart(document.getElementById('ammoniaChart').getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: phLabels,
-                datasets: [{
-                    label: 'Ammonia (ppm)',
-                    data: ammoniaData,
-                    borderColor: 'red',
-                    backgroundColor: 'rgba(255,0,0,0.1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            }
-        });
-    </script>   
 
 </body>
 </html>

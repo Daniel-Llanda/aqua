@@ -46,7 +46,7 @@
     
 </head>
 
-<body class="bg-gray-100 font-sans antialiased flex min-h-screen">
+<body class="bg-gray-100 font-sans antialiased min-h-screen">
     <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fomantic-ui/2.9.2/semantic.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
@@ -54,7 +54,7 @@
 
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-blue-600 text-white flex flex-col">
+    <aside class="fixed inset-y-0 left-0 z-30 h-screen w-64 overflow-y-auto bg-blue-600 text-white flex flex-col">
         <div class="px-6 py-6 border-b border-blue-500">
             <h1 class="text-2xl font-bold">Admin Panel</h1>
         </div>
@@ -79,7 +79,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col">
+    <main class="ml-64 min-h-screen min-w-0 flex flex-col">
         <!-- Top Bar -->
         <header class="bg-white shadow-sm px-8 py-4 flex justify-between items-center">
             <h2 class="text-xl font-semibold text-gray-800">Telemetry</h2>

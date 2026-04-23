@@ -21,8 +21,10 @@ class PondSeeder extends Seeder
                 'fish_type' => json_encode([
                     'Tilapia (General)'
                 ]),
-                'hatching_date' => Carbon::parse('2025-01-15'),
+                'hatching_started_at' => Carbon::parse('2025-01-15'),
                 'harvest_date' => Carbon::parse('2025-05-15'),
+                'species_data' => null,
+                'harvest_data' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -32,8 +34,10 @@ class PondSeeder extends Seeder
                 'fish_type' => json_encode([
                     'Penaeid Shrimp (General)'
                 ]),
-                'hatching_date' => Carbon::parse('2025-02-01'),
+                'hatching_started_at' => Carbon::parse('2025-02-01'),
                 'harvest_date' => Carbon::parse('2025-06-01'),
+                'species_data' => null,
+                'harvest_data' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -44,8 +48,10 @@ class PondSeeder extends Seeder
                     'Bangus (Milkfish)',
                     'Tilapia (General)'
                 ]),
-                'hatching_date' => Carbon::parse('2025-01-20'),
+                'hatching_started_at' => Carbon::parse('2025-01-20'),
                 'harvest_date' => Carbon::parse('2025-05-20'),
+                'species_data' => null,
+                'harvest_data' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -55,8 +61,10 @@ class PondSeeder extends Seeder
                 'fish_type' => json_encode([
                     'Atlantic Blue Crab (Callinectes sapidus)'
                 ]),
-                'hatching_date' => Carbon::parse('2025-03-01'),
+                'hatching_started_at' => Carbon::parse('2025-03-01'),
                 'harvest_date' => Carbon::parse('2025-07-01'),
+                'species_data' => null,
+                'harvest_data' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]
@@ -64,7 +72,5 @@ class PondSeeder extends Seeder
 
     }
 }
-
-
 
 
