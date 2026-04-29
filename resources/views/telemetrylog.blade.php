@@ -52,7 +52,7 @@
 
                                 <div>
                                     <span class="font-medium">Water Temp:</span>
-                                    {{ $log->payload['water_temp'] ?? '—' }} °C
+                                    {{ $log->payload['temperature'] ?? '—' }} °C
                                 </div>
 
                                 <div>
