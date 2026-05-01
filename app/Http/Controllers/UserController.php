@@ -7,9 +7,12 @@ use App\Models\Pond;
 use App\Models\PondCycle;
 use App\Models\SmsAlertCooldown;
 use App\Services\SemaphoreService;
-use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -25,6 +28,7 @@ class UserController extends Controller
         $ponds = Pond::where('user_id', $userId)->latest()->get();
         $selectedPond = null;
         $payLoads = collect();
+        $harvestComparison = null;
 
         if ($request->filled('pond_id')) {
             $selectedPond = $ponds->firstWhere('id', (int) $request->input('pond_id'));
@@ -34,6 +38,8 @@ class UserController extends Controller
                     ->where('user_id', $userId)
                     ->orderBy('created_at', 'asc')
                     ->get();
+
+                $harvestComparison = $this->buildHarvestComparison($userId, $selectedPond);
             }
         }
 
@@ -45,7 +51,7 @@ class UserController extends Controller
         foreach ($payLoads as $data) {
             $decoded = $data->payload; // already array
 
-            if (!$decoded || !is_array($decoded)) {
+            if (! $decoded || ! is_array($decoded)) {
                 continue;
             }
 
@@ -53,8 +59,8 @@ class UserController extends Controller
             $temp = $this->toFloat($decoded['water_temp'] ?? $decoded['temperature'] ?? null);
             $ammonia = $this->toFloat($decoded['mq_ratio'] ?? $decoded['ammonia'] ?? null);
 
-            $labels[] = $data->created_at 
-                ? $data->created_at->format('H:i:s') 
+            $labels[] = $data->created_at
+                ? $data->created_at->format('H:i:s')
                 : '';
             $phData[] = $ph;
             $tempData[] = $temp;
@@ -101,6 +107,7 @@ class UserController extends Controller
             'phData',
             'tempData',
             'ammoniaData',
+            'harvestComparison',
             'status'
         ));
     }
@@ -124,7 +131,7 @@ class UserController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$pond) {
+        if (! $pond) {
             return response()->json([
                 'sent' => false,
                 'reason' => 'unauthorized_pond',
@@ -144,7 +151,7 @@ class UserController extends Controller
             ]);
         }
 
-        if (!$user->phone || !$user->phone_verified) {
+        if (! $user->phone || ! $user->phone_verified) {
             return response()->json([
                 'sent' => false,
                 'reason' => 'phone_not_verified',
@@ -189,7 +196,7 @@ class UserController extends Controller
             ]);
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return response()->json([
                 'sent' => false,
                 'reason' => 'sms_failed',
@@ -222,6 +229,116 @@ class UserController extends Controller
         }
 
         return is_numeric($value) ? (float) $value : 0.0;
+    }
+
+    private function buildHarvestComparison(int $userId, Pond $pond): array
+    {
+        $completedCycles = PondCycle::where('user_id', $userId)
+            ->where('pond_id', $pond->id)
+            ->where('status', 'completed')
+            ->orderByDesc('cycle_number')
+            ->limit(2)
+            ->get();
+
+        if ($completedCycles->count() < 2) {
+            return [
+                'hasComparison' => false,
+                'message' => 'Not enough completed harvest cycles to compare yet.',
+                'labels' => [],
+                'previousData' => [],
+                'latestData' => [],
+                'notes' => [],
+                'previousCycle' => null,
+                'latestCycle' => null,
+            ];
+        }
+
+        $latestCycle = $completedCycles->first();
+        $previousCycle = $completedCycles->skip(1)->first();
+
+        $previousHarvest = $this->harvestQuantitiesBySpecies($previousCycle->harvest_data);
+        $latestHarvest = $this->harvestQuantitiesBySpecies($latestCycle->harvest_data);
+        $speciesNames = $previousHarvest->keys()
+            ->merge($latestHarvest->keys())
+            ->unique()
+            ->values();
+
+        if ($speciesNames->isEmpty()) {
+            return [
+                'hasComparison' => false,
+                'message' => 'No valid harvest quantity data is available for the last two completed cycles.',
+                'labels' => [],
+                'previousData' => [],
+                'latestData' => [],
+                'notes' => [],
+                'previousCycle' => $this->formatHarvestComparisonCycle($previousCycle),
+                'latestCycle' => $this->formatHarvestComparisonCycle($latestCycle),
+            ];
+        }
+
+        $notes = $speciesNames
+            ->map(function (string $species) use ($previousHarvest, $latestHarvest) {
+                if (! $latestHarvest->has($species)) {
+                    return "{$species} was only present in the previous cycle.";
+                }
+
+                if (! $previousHarvest->has($species)) {
+                    return "{$species} was only present in the latest cycle.";
+                }
+
+                return null;
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'hasComparison' => true,
+            'message' => null,
+            'labels' => $speciesNames->all(),
+            'previousData' => $speciesNames
+                ->map(fn (string $species) => round((float) ($previousHarvest->get($species) ?? 0), 2))
+                ->all(),
+            'latestData' => $speciesNames
+                ->map(fn (string $species) => round((float) ($latestHarvest->get($species) ?? 0), 2))
+                ->all(),
+            'notes' => $notes,
+            'previousCycle' => $this->formatHarvestComparisonCycle($previousCycle),
+            'latestCycle' => $this->formatHarvestComparisonCycle($latestCycle),
+        ];
+    }
+
+    private function harvestQuantitiesBySpecies(mixed $harvestData): Collection
+    {
+        if (! is_array($harvestData)) {
+            return collect();
+        }
+
+        return collect($harvestData)->reduce(function (Collection $totals, mixed $item) {
+            if (! is_array($item)) {
+                return $totals;
+            }
+
+            $species = trim((string) ($item['species'] ?? ''));
+            $harvestKg = $this->nullableTelemetryNumber($item['harvest_kg'] ?? null);
+
+            if ($species === '' || $harvestKg === null || $harvestKg < 0) {
+                return $totals;
+            }
+
+            $totals->put($species, round((float) ($totals->get($species) ?? 0) + $harvestKg, 2));
+
+            return $totals;
+        }, collect());
+    }
+
+    private function formatHarvestComparisonCycle(PondCycle $cycle): array
+    {
+        return [
+            'cycleNumber' => (int) $cycle->cycle_number,
+            'completedAt' => $cycle->completed_at?->format('M d, Y'),
+            'harvestDate' => $cycle->harvest_date?->format('M d, Y'),
+        ];
     }
 
     private function getTriggeredAlertConditions(float $temp, float $ph, float $ammonia): array
@@ -276,7 +393,6 @@ class UserController extends Controller
 
         return mb_substr($message, 0, 900);
     }
-
 
     /**
      * Show fish pond information page
@@ -530,7 +646,7 @@ class UserController extends Controller
                 ->with('warning', 'Complete species quantity data first before entering harvest data.');
         }
 
-        if (!$this->isHarvestWindowOpen($cycle)) {
+        if (! $this->isHarvestWindowOpen($cycle)) {
             return redirect()
                 ->route('pond-info')
                 ->with('warning', 'Harvest data is not available until the harvest date is reached.');
@@ -561,7 +677,7 @@ class UserController extends Controller
                 ->with('warning', 'Complete species quantity data first before entering harvest data.');
         }
 
-        if (!$this->isHarvestWindowOpen($cycle)) {
+        if (! $this->isHarvestWindowOpen($cycle)) {
             return redirect()
                 ->route('pond-info')
                 ->with('warning', 'Harvest quantity input is locked until the harvest date is reached.');
@@ -611,28 +727,167 @@ class UserController extends Controller
 
     public function telemetrylog(Request $request)
     {
-        $user = auth()->user();
+        $validated = $request->validate([
+            'pond_id' => ['nullable', 'integer'],
+            'period' => ['nullable', 'in:day,week,month'],
+            'filter_date' => ['nullable', 'date'],
+        ]);
+
+        $user = $request->user();
+        $period = $validated['period'] ?? 'day';
+        $filterDate = $validated['filter_date'] ?? now()->toDateString();
+        $dateRange = $this->telemetryDateRange($period, $filterDate);
 
         // Get ponds owned by this user
-        $ponds = Pond::where('user_id', $user->id)->get();
+        $ponds = Pond::where('user_id', $user->id)->latest()->get();
+        $selectedPond = null;
 
         // If a pond is selected, load its payloads
         $payloads = collect();
+        $telemetrySummary = $this->summarizeTelemetryRecords(collect());
 
         if ($request->filled('pond_id')) {
-            $payloads = Payload::where('pond_id', $request->pond_id)
-                ->where('user_id', $user->id)
-                ->latest()
-                ->paginate(10)
-                ->withQueryString();
+            $selectedPond = $ponds->firstWhere('id', (int) $validated['pond_id']);
+
+            if ($selectedPond) {
+                $query = $this->telemetryRecordsQuery($user->id, $selectedPond->id, $dateRange);
+                $summaryRecords = (clone $query)->get();
+                $telemetrySummary = $this->summarizeTelemetryRecords($summaryRecords);
+
+                $payloads = (clone $query)
+                    ->latest()
+                    ->paginate(10)
+                    ->withQueryString();
+            }
         }
 
-        return view('telemetrylog', compact('ponds', 'payloads'));
+        return view('telemetrylog', compact(
+            'ponds',
+            'payloads',
+            'selectedPond',
+            'period',
+            'filterDate',
+            'dateRange',
+            'telemetrySummary'
+        ));
+    }
+
+    public function telemetryReport(Request $request)
+    {
+        $validated = $request->validate([
+            'pond_id' => ['required', 'integer'],
+            'period' => ['required', 'in:day,week,month'],
+            'filter_date' => ['nullable', 'date'],
+        ]);
+
+        $user = $request->user();
+        $period = $validated['period'];
+        $filterDate = $validated['filter_date'] ?? now()->toDateString();
+        $dateRange = $this->telemetryDateRange($period, $filterDate);
+        $pond = Pond::where('user_id', $user->id)
+            ->whereKey($validated['pond_id'])
+            ->firstOrFail();
+
+        $payloads = $this->telemetryRecordsQuery($user->id, $pond->id, $dateRange)
+            ->oldest()
+            ->get();
+        $telemetrySummary = $this->summarizeTelemetryRecords($payloads);
+
+        return view('telemetry-report', compact(
+            'user',
+            'pond',
+            'payloads',
+            'period',
+            'filterDate',
+            'dateRange',
+            'telemetrySummary'
+        ));
+    }
+
+    private function telemetryDateRange(string $period, ?string $filterDate): array
+    {
+        $anchor = Carbon::parse($filterDate ?: now()->toDateString());
+
+        return match ($period) {
+            'week' => [
+                'start' => $anchor->copy()->startOfWeek(CarbonInterface::MONDAY)->startOfDay(),
+                'end' => $anchor->copy()->endOfWeek(CarbonInterface::SUNDAY)->endOfDay(),
+            ],
+            'month' => [
+                'start' => $anchor->copy()->startOfMonth()->startOfDay(),
+                'end' => $anchor->copy()->endOfMonth()->endOfDay(),
+            ],
+            default => [
+                'start' => $anchor->copy()->startOfDay(),
+                'end' => $anchor->copy()->endOfDay(),
+            ],
+        };
+    }
+
+    private function telemetryRecordsQuery(int $userId, int $pondId, array $dateRange)
+    {
+        return Payload::query()
+            ->with('pond')
+            ->where('user_id', $userId)
+            ->where('pond_id', $pondId)
+            ->whereBetween('created_at', [$dateRange['start'], $dateRange['end']]);
+    }
+
+    private function summarizeTelemetryRecords(Collection $records): array
+    {
+        $temperatures = [];
+        $phLevels = [];
+        $ammoniaLevels = [];
+
+        foreach ($records as $record) {
+            $payload = is_array($record->payload) ? $record->payload : [];
+
+            $temperature = $this->nullableTelemetryNumber($payload['water_temp'] ?? $payload['temperature'] ?? null);
+            $ph = $this->nullableTelemetryNumber($payload['ph'] ?? null);
+            $ammonia = $this->nullableTelemetryNumber($payload['mq_ratio'] ?? $payload['ammonia'] ?? null);
+
+            if ($temperature !== null) {
+                $temperatures[] = $temperature;
+            }
+
+            if ($ph !== null) {
+                $phLevels[] = $ph;
+            }
+
+            if ($ammonia !== null) {
+                $ammoniaLevels[] = $ammonia;
+            }
+        }
+
+        return [
+            'count' => $records->count(),
+            'avg_temperature' => $this->averageTelemetryValues($temperatures, 1),
+            'avg_ph' => $this->averageTelemetryValues($phLevels, 2),
+            'avg_ammonia' => $this->averageTelemetryValues($ammoniaLevels, 3),
+        ];
+    }
+
+    private function nullableTelemetryNumber(mixed $value): ?float
+    {
+        if ($value === null || $value === '' || ! is_numeric($value)) {
+            return null;
+        }
+
+        return (float) $value;
+    }
+
+    private function averageTelemetryValues(array $values, int $precision): ?float
+    {
+        if ($values === []) {
+            return null;
+        }
+
+        return round(array_sum($values) / count($values), $precision);
     }
 
     private function cycleNeedsSpeciesData(PondCycle $cycle): bool
     {
-        if (empty($cycle->species_data) || !is_array($cycle->species_data)) {
+        if (empty($cycle->species_data) || ! is_array($cycle->species_data)) {
             return true;
         }
 
@@ -656,17 +911,17 @@ class UserController extends Controller
             return false;
         }
 
-        if (!$cycle->hatching_started_at) {
+        if (! $cycle->hatching_started_at) {
             return false;
         }
 
         // Allow one-time completion if the species data is still incomplete.
-        return !$this->cycleNeedsSpeciesData($cycle);
+        return ! $this->cycleNeedsSpeciesData($cycle);
     }
 
     private function isHarvestWindowOpen(PondCycle $cycle): bool
     {
-        if (!$cycle->harvest_date) {
+        if (! $cycle->harvest_date) {
             return false;
         }
 
@@ -679,5 +934,4 @@ class UserController extends Controller
             abort(403);
         }
     }
-
 }

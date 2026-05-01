@@ -8,6 +8,7 @@ use App\Models\PondCycle;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
@@ -148,6 +149,118 @@ class AdminController extends Controller
                 ->map(fn (PondCycle $cycle) => $this->buildCycleHistorySummary($cycle))
                 ->values()
                 ->all(),
+            'comparison' => $this->buildHarvestComparison($completedCycles),
+        ];
+    }
+
+    private function buildHarvestComparison(Collection $completedCycles): array
+    {
+        if ($completedCycles->count() < 2) {
+            return [
+                'hasComparison' => false,
+                'message' => 'Not enough completed harvest cycles to compare yet.',
+                'labels' => [],
+                'previousData' => [],
+                'latestData' => [],
+                'notes' => [],
+                'previousCycle' => null,
+                'latestCycle' => null,
+            ];
+        }
+
+        $latestCycle = $completedCycles->first();
+        $previousCycle = $completedCycles->skip(1)->first();
+        $previousHarvest = $this->harvestQuantitiesBySpecies($previousCycle->harvest_data);
+        $latestHarvest = $this->harvestQuantitiesBySpecies($latestCycle->harvest_data);
+        $speciesNames = $previousHarvest->keys()
+            ->merge($latestHarvest->keys())
+            ->unique()
+            ->values();
+
+        if ($speciesNames->isEmpty()) {
+            return [
+                'hasComparison' => false,
+                'message' => 'No valid harvest quantity data is available for the last two completed cycles.',
+                'labels' => [],
+                'previousData' => [],
+                'latestData' => [],
+                'notes' => [],
+                'previousCycle' => $this->formatHarvestComparisonCycle($previousCycle),
+                'latestCycle' => $this->formatHarvestComparisonCycle($latestCycle),
+            ];
+        }
+
+        $notes = $speciesNames
+            ->map(function (string $species) use ($previousHarvest, $latestHarvest) {
+                if (!$latestHarvest->has($species)) {
+                    return "{$species} was only present in the previous cycle.";
+                }
+
+                if (!$previousHarvest->has($species)) {
+                    return "{$species} was only present in the latest cycle.";
+                }
+
+                return null;
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'hasComparison' => true,
+            'message' => null,
+            'labels' => $speciesNames->all(),
+            'previousData' => $speciesNames
+                ->map(fn (string $species) => round((float) ($previousHarvest->get($species) ?? 0), 2))
+                ->all(),
+            'latestData' => $speciesNames
+                ->map(fn (string $species) => round((float) ($latestHarvest->get($species) ?? 0), 2))
+                ->all(),
+            'notes' => $notes,
+            'previousCycle' => $this->formatHarvestComparisonCycle($previousCycle),
+            'latestCycle' => $this->formatHarvestComparisonCycle($latestCycle),
+        ];
+    }
+
+    private function harvestQuantitiesBySpecies(mixed $harvestData): Collection
+    {
+        if (!is_array($harvestData)) {
+            return collect();
+        }
+
+        return collect($harvestData)->reduce(function (Collection $totals, mixed $item) {
+            if (!is_array($item)) {
+                return $totals;
+            }
+
+            $species = trim((string) ($item['species'] ?? ''));
+            $harvestKg = $this->nullableHarvestNumber($item['harvest_kg'] ?? null);
+
+            if ($species === '' || $harvestKg === null || $harvestKg < 0) {
+                return $totals;
+            }
+
+            $totals->put($species, round((float) ($totals->get($species) ?? 0) + $harvestKg, 2));
+
+            return $totals;
+        }, collect());
+    }
+
+    private function nullableHarvestNumber(mixed $value): ?float
+    {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        return (float) $value;
+    }
+
+    private function formatHarvestComparisonCycle(PondCycle $cycle): array
+    {
+        return [
+            'cycleNumber' => (int) $cycle->cycle_number,
+            'completedAt' => $cycle->completed_at?->format('M d, Y'),
+            'harvestDate' => $cycle->harvest_date?->format('M d, Y'),
         ];
     }
 

@@ -195,6 +195,35 @@
                         <canvas id="adminAmmoniaChart"></canvas>
                     </div>
                 </div>
+
+                <div id="adminPondHarvestComparisonSection" class="hidden mt-4 rounded-lg border p-4">
+                    <div class="mb-4">
+                        <h5 class="text-sm font-semibold text-gray-800">Previous vs Latest Harvest</h5>
+                        <p class="text-sm text-gray-500">
+                            Compares harvest quantities by species from the last two completed cycles for this pond.
+                        </p>
+                    </div>
+
+                    <div id="adminPondHarvestComparisonEmpty"
+                         class="hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                        Not enough completed harvest cycles to compare yet.
+                    </div>
+
+                    <div id="adminPondHarvestComparisonContent" class="hidden">
+                        <div class="mb-4 flex flex-col gap-1 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
+                            <span id="adminPondHarvestPreviousCycle"></span>
+                            <span id="adminPondHarvestLatestCycle"></span>
+                        </div>
+
+                        <div class="relative h-80">
+                            <canvas id="adminHarvestComparisonChart"></canvas>
+                        </div>
+
+                        <div id="adminPondHarvestComparisonNotes"
+                             class="hidden mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="adminPondHarvestSection" class="hidden border-t pt-4">
@@ -293,12 +322,14 @@
             temp: null,
             ammonia: null,
         };
+        let adminHarvestComparisonChart = null;
 
         function resetAdminPondTelemetry() {
             $('#adminPondTelemetrySection').addClass('hidden');
             $('#adminPondNoTelemetry').addClass('hidden').text('No telemetry data found for this pond.');
             $('#adminPondCharts').removeClass('hidden');
             $('#adminSelectedPondTitle').text('');
+            resetAdminHarvestComparison();
             resetAdminPondHarvest();
         }
 
@@ -310,6 +341,22 @@
             $('#adminPondActiveHarvestPanel').addClass('hidden').empty();
             $('#adminPondLatestHarvestPanel').addClass('hidden').empty();
             $('#adminPondHistoryPanel').addClass('hidden').empty();
+        }
+
+        function resetAdminHarvestComparison() {
+            $('#adminPondHarvestComparisonSection').addClass('hidden');
+            $('#adminPondHarvestComparisonEmpty')
+                .addClass('hidden')
+                .text('Not enough completed harvest cycles to compare yet.');
+            $('#adminPondHarvestComparisonContent').addClass('hidden');
+            $('#adminPondHarvestPreviousCycle').text('');
+            $('#adminPondHarvestLatestCycle').text('');
+            $('#adminPondHarvestComparisonNotes').addClass('hidden').empty();
+
+            if (adminHarvestComparisonChart) {
+                adminHarvestComparisonChart.destroy();
+                adminHarvestComparisonChart = null;
+            }
         }
 
         function buildAdminLineChart(canvasId, label, borderColor, backgroundColor) {
@@ -356,6 +403,86 @@
             chart.data.labels = labels;
             chart.data.datasets[0].data = data;
             chart.update();
+        }
+
+        function buildAdminHarvestComparisonChart(comparison) {
+            const canvas = document.getElementById('adminHarvestComparisonChart');
+
+            if (!canvas || !comparison || !comparison.hasComparison) {
+                return;
+            }
+
+            if (adminHarvestComparisonChart) {
+                adminHarvestComparisonChart.destroy();
+            }
+
+            const previousCycleNumber = comparison.previousCycle?.cycleNumber ?? '';
+            const latestCycleNumber = comparison.latestCycle?.cycleNumber ?? '';
+            const previousLabel = previousCycleNumber
+                ? `Previous Cycle Harvest (Cycle #${previousCycleNumber})`
+                : 'Previous Cycle Harvest';
+            const latestLabel = latestCycleNumber
+                ? `Latest Cycle Harvest (Cycle #${latestCycleNumber})`
+                : 'Latest Cycle Harvest';
+
+            adminHarvestComparisonChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: comparison.labels,
+                    datasets: [
+                        {
+                            label: previousLabel,
+                            data: comparison.previousData,
+                            backgroundColor: 'rgba(37, 99, 235, 0.72)',
+                            borderColor: 'rgb(37, 99, 235)',
+                            borderWidth: 1,
+                        },
+                        {
+                            label: latestLabel,
+                            data: comparison.latestData,
+                            backgroundColor: 'rgba(22, 163, 74, 0.72)',
+                            borderColor: 'rgb(22, 163, 74)',
+                            borderWidth: 1,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = Number.parseFloat(context.parsed.y ?? 0);
+                                    return `${context.dataset.label}: ${value.toFixed(2)} kg`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Species Name',
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 30,
+                            },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Harvest Quantity (kg)',
+                            },
+                        },
+                    },
+                },
+            });
         }
 
         function escapeHtml(value) {
@@ -504,6 +631,42 @@
                     </table>
                 </div>
             `;
+        }
+
+        function showAdminHarvestComparison(pond, comparison) {
+            $('#adminPondHarvestComparisonSection').removeClass('hidden');
+
+            if (!comparison || !comparison.hasComparison) {
+                if (adminHarvestComparisonChart) {
+                    adminHarvestComparisonChart.destroy();
+                    adminHarvestComparisonChart = null;
+                }
+
+                $('#adminPondHarvestComparisonContent').addClass('hidden');
+                $('#adminPondHarvestComparisonEmpty')
+                    .removeClass('hidden')
+                    .text(comparison?.message ?? 'Not enough completed harvest cycles to compare yet.');
+                return;
+            }
+
+            $('#adminPondHarvestComparisonEmpty').addClass('hidden');
+            $('#adminPondHarvestComparisonContent').removeClass('hidden');
+            $('#adminPondHarvestPreviousCycle').text(`Previous cycle: Cycle #${comparison.previousCycle.cycleNumber}`);
+            $('#adminPondHarvestLatestCycle').text(`Latest cycle: Cycle #${comparison.latestCycle.cycleNumber}`);
+
+            buildAdminHarvestComparisonChart(comparison);
+
+            if (comparison.notes && comparison.notes.length > 0) {
+                const notes = comparison.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join('');
+                $('#adminPondHarvestComparisonNotes')
+                    .removeClass('hidden')
+                    .html(`
+                        <p class="font-semibold">Species notes</p>
+                        <ul class="mt-2 list-disc space-y-1 pl-5">${notes}</ul>
+                    `);
+            } else {
+                $('#adminPondHarvestComparisonNotes').addClass('hidden').empty();
+            }
         }
 
         function showAdminPondHarvest(pond, harvest) {
@@ -672,17 +835,27 @@
             $('#adminPondTelemetrySection').removeClass('hidden');
             $('#adminPondCharts').addClass('hidden');
             $('#adminPondNoTelemetry').removeClass('hidden').text('Loading telemetry...');
+            resetAdminHarvestComparison();
             $('#adminPondHarvestSection').removeClass('hidden');
             $('#adminPondHarvestContent').addClass('hidden');
             $('#adminPondHarvestEmpty').removeClass('hidden').text('Loading harvest details...');
+            $('#adminPondHarvestComparisonSection').removeClass('hidden');
+            $('#adminPondHarvestComparisonContent').addClass('hidden');
+            $('#adminPondHarvestComparisonEmpty').removeClass('hidden').text('Loading harvest comparison...');
 
             try {
                 const pondDetails = await fetchAdminPondDetails(pond);
                 showAdminPondTelemetry(pond, pondDetails);
+                showAdminHarvestComparison(pond, pondDetails.harvest?.comparison);
                 showAdminPondHarvest(pond, pondDetails.harvest);
             } catch (error) {
                 $('#adminPondCharts').addClass('hidden');
                 $('#adminPondNoTelemetry').removeClass('hidden').text('Unable to load telemetry for this pond.');
+                $('#adminPondHarvestComparisonSection').removeClass('hidden');
+                $('#adminPondHarvestComparisonContent').addClass('hidden');
+                $('#adminPondHarvestComparisonEmpty')
+                    .removeClass('hidden')
+                    .text('Unable to load harvest comparison for this pond.');
                 $('#adminPondHarvestSection').removeClass('hidden');
                 $('#adminPondHarvestContent').addClass('hidden');
                 $('#adminPondHarvestEmpty')

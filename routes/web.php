@@ -1,11 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
-use App\Models\Admin;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +59,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/telemetrylog', [UserController::class, 'telemetrylog'])
         ->name('telemetrylog');
 
+    Route::get('/telemetrylog/report', [UserController::class, 'telemetryReport'])
+        ->name('telemetrylog.report');
+
     Route::get('/payload', [UserController::class, 'getPayload'])
         ->name('get.payload');
 
@@ -67,9 +69,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:20,1')
         ->name('dashboard.alerts.sms');
 
-
 });
-
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -97,16 +97,12 @@ Route::get('/buttons/text-icon', function () {
     return view('buttons-showcase.text-icon');
 })->middleware(['auth'])->name('buttons.text-icon');
 
-require __DIR__ . '/auth.php';
-
-
-
+require __DIR__.'/auth.php';
 
 Route::prefix('admin')->group(function () {
     Route::get('/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
     Route::post('/login', [AdminAuthController::class, 'login'])->name('admin.login.submit');
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
-
 
     Route::middleware('auth:admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
@@ -116,6 +112,5 @@ Route::prefix('admin')->group(function () {
         Route::get('/telemetry', [AdminController::class, 'telemetry'])->name('admin.telemetry');
         Route::post('/users', [AdminController::class, 'storeUser'])->name('admin.users.create');
 
-        
     });
 });

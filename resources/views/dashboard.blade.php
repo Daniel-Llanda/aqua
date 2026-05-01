@@ -110,6 +110,50 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ================= HARVEST COMPARISON CHART ================= -->
+            <div id="harvest-comparison-section" class="mb-8">
+                <div class="mb-3">
+                    <h3 class="text-base font-semibold text-gray-800 dark:text-gray-100">
+                        Previous vs Latest Harvest
+                    </h3>
+                    <p class="text-sm text-gray-500">
+                        Compares completed harvest quantities by species for Pond #{{ $selectedPond->id }} only.
+                    </p>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 border rounded-lg p-4">
+                    @if($harvestComparison && $harvestComparison['hasComparison'])
+                        <div class="mb-4 flex flex-col gap-1 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
+                            <span>
+                                Previous cycle: Cycle #{{ $harvestComparison['previousCycle']['cycleNumber'] }}
+                            </span>
+                            <span>
+                                Latest cycle: Cycle #{{ $harvestComparison['latestCycle']['cycleNumber'] }}
+                            </span>
+                        </div>
+
+                        <div class="relative h-80">
+                            <canvas id="harvestComparisonChart"></canvas>
+                        </div>
+
+                        @if(! empty($harvestComparison['notes']))
+                            <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                <p class="font-semibold">Species notes</p>
+                                <ul class="mt-2 list-disc space-y-1 pl-5">
+                                    @foreach($harvestComparison['notes'] as $note)
+                                        <li>{{ $note }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                    @else
+                        <div class="rounded-md border border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            {{ $harvestComparison['message'] ?? 'Not enough completed harvest cycles to compare yet.' }}
+                        </div>
+                    @endif
+                </div>
+            </div>
         @endif
 
         <!-- ================= KPI CARDS ================= -->
@@ -193,6 +237,7 @@
             'id' => (string) $selectedPond->id,
             'fish' => is_array($selectedPond->fish_type) ? $selectedPond->fish_type : [],
         ] : null);
+        window.harvestComparison = @json($harvestComparison);
 
         $(document).ready(function() {
 
@@ -269,10 +314,87 @@
                 });
             }
 
+            function buildHarvestComparisonChart(comparison) {
+                const canvas = document.getElementById('harvestComparisonChart');
+
+                if (!canvas || !comparison || !comparison.hasComparison) {
+                    return null;
+                }
+
+                const previousCycleNumber = comparison.previousCycle?.cycleNumber ?? '';
+                const latestCycleNumber = comparison.latestCycle?.cycleNumber ?? '';
+                const previousLabel = previousCycleNumber
+                    ? `Previous Cycle Harvest (Cycle #${previousCycleNumber})`
+                    : 'Previous Cycle Harvest';
+                const latestLabel = latestCycleNumber
+                    ? `Latest Cycle Harvest (Cycle #${latestCycleNumber})`
+                    : 'Latest Cycle Harvest';
+
+                return new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: comparison.labels,
+                        datasets: [
+                            {
+                                label: previousLabel,
+                                data: comparison.previousData,
+                                backgroundColor: 'rgba(37, 99, 235, 0.72)',
+                                borderColor: 'rgb(37, 99, 235)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: latestLabel,
+                                data: comparison.latestData,
+                                backgroundColor: 'rgba(22, 163, 74, 0.72)',
+                                borderColor: 'rgb(22, 163, 74)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = Number.parseFloat(context.parsed.y ?? 0);
+                                        return `${context.dataset.label}: ${value.toFixed(2)} kg`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Species Name'
+                                },
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 30
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Harvest Quantity (kg)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
             if (selectedPond) {
                 phChart = buildLineChart('phChart', 'pH Level', @json($phData), 'blue', 'rgba(0,0,255,0.1)');
                 tempChart = buildLineChart('tempChart', 'Water Temperature (°C)', @json($tempData), 'orange', 'rgba(255,165,0,0.1)');
                 ammoniaChart = buildLineChart('ammoniaChart', 'Ammonia (ppm)', @json($ammoniaData), 'red', 'rgba(255,0,0,0.1)');
+                buildHarvestComparisonChart(window.harvestComparison);
             }
 
             // ================= Pond Selection =================
