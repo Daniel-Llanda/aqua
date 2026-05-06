@@ -6,6 +6,7 @@ use App\Models\Payload;
 use App\Models\Pond;
 use App\Models\PondCycle;
 use App\Models\User;
+use App\Services\HarvestAiAnalysisService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -62,8 +63,12 @@ class AdminController extends Controller
             'user' => '__USER__',
             'pond' => '__POND__',
         ], false);
+        $pondHarvestAnalysisUrlTemplate = route('admin.users.ponds.harvest-analysis', [
+            'user' => '__USER__',
+            'pond' => '__POND__',
+        ], false);
 
-        return view('admin.user', compact('users', 'pondTelemetryUrlTemplate'));
+        return view('admin.user', compact('users', 'pondTelemetryUrlTemplate', 'pondHarvestAnalysisUrlTemplate'));
     }
 
     public function userPondTelemetry(User $user, Pond $pond): JsonResponse
@@ -83,6 +88,18 @@ class AdminController extends Controller
         ]);
     }
 
+    public function userPondHarvestAnalysis(
+        User $user,
+        Pond $pond,
+        HarvestAiAnalysisService $harvestAiAnalysisService
+    ): JsonResponse {
+        if ((int) $pond->user_id !== (int) $user->id) {
+            abort(404);
+        }
+
+        return response()->json($harvestAiAnalysisService->analyzePond($user->id, $pond));
+    }
+
     private function buildTelemetrySeries($payloads): array
     {
         $labels = [];
@@ -93,7 +110,7 @@ class AdminController extends Controller
         foreach ($payloads as $data) {
             $decoded = $data->payload;
 
-            if (!$decoded || !is_array($decoded)) {
+            if (! $decoded || ! is_array($decoded)) {
                 continue;
             }
 
@@ -126,7 +143,7 @@ class AdminController extends Controller
         $activeCycle = $cycles->firstWhere('status', 'active');
         $completedCycles = $cycles->where('status', 'completed')->values();
         $latestHarvestCycle = $cycles->first(function (PondCycle $cycle) {
-            return !empty($cycle->harvest_data) && is_array($cycle->harvest_data);
+            return ! empty($cycle->harvest_data) && is_array($cycle->harvest_data);
         });
 
         $totalHarvestedKg = (float) $completedCycles->sum(function (PondCycle $cycle) {
@@ -192,11 +209,11 @@ class AdminController extends Controller
 
         $notes = $speciesNames
             ->map(function (string $species) use ($previousHarvest, $latestHarvest) {
-                if (!$latestHarvest->has($species)) {
+                if (! $latestHarvest->has($species)) {
                     return "{$species} was only present in the previous cycle.";
                 }
 
-                if (!$previousHarvest->has($species)) {
+                if (! $previousHarvest->has($species)) {
                     return "{$species} was only present in the latest cycle.";
                 }
 
@@ -224,12 +241,12 @@ class AdminController extends Controller
 
     private function harvestQuantitiesBySpecies(mixed $harvestData): Collection
     {
-        if (!is_array($harvestData)) {
+        if (! is_array($harvestData)) {
             return collect();
         }
 
         return collect($harvestData)->reduce(function (Collection $totals, mixed $item) {
-            if (!is_array($item)) {
+            if (! is_array($item)) {
                 return $totals;
             }
 
@@ -248,7 +265,7 @@ class AdminController extends Controller
 
     private function nullableHarvestNumber(mixed $value): ?float
     {
-        if ($value === null || $value === '' || !is_numeric($value)) {
+        if ($value === null || $value === '' || ! is_numeric($value)) {
             return null;
         }
 
@@ -348,7 +365,7 @@ class AdminController extends Controller
             return 'Harvest data recorded';
         }
 
-        if (!$cycle->harvest_date) {
+        if (! $cycle->harvest_date) {
             return 'Harvest date not set';
         }
 
@@ -384,5 +401,4 @@ class AdminController extends Controller
         return redirect()->route('admin.users')->with('success', 'User created successfully.');
 
     }
-
 }

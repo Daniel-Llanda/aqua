@@ -69,6 +69,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:20,1')
         ->name('dashboard.alerts.sms');
 
+    Route::get('/dashboard/harvest-analysis', [UserController::class, 'harvestAnalysis'])
+        ->middleware('throttle:10,1')
+        ->name('dashboard.harvest-analysis');
+
 });
 
 Route::middleware('auth')->group(function () {
@@ -109,6 +113,9 @@ Route::prefix('admin')->group(function () {
         Route::get('/users', [AdminController::class, 'user'])->name('admin.users');
         Route::get('/users/{user}/ponds/{pond}/telemetry', [AdminController::class, 'userPondTelemetry'])
             ->name('admin.users.ponds.telemetry');
+        Route::get('/users/{user}/ponds/{pond}/harvest-analysis', [AdminController::class, 'userPondHarvestAnalysis'])
+            ->middleware('throttle:10,1')
+            ->name('admin.users.ponds.harvest-analysis');
         Route::get('/telemetry', [AdminController::class, 'telemetry'])->name('admin.telemetry');
         Route::post('/users', [AdminController::class, 'storeUser'])->name('admin.users.create');
 

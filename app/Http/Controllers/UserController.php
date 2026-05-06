@@ -6,6 +6,7 @@ use App\Models\Payload;
 use App\Models\Pond;
 use App\Models\PondCycle;
 use App\Models\SmsAlertCooldown;
+use App\Services\HarvestAiAnalysisService;
 use App\Services\SemaphoreService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -220,6 +221,30 @@ class UserController extends Controller
             'sent' => true,
             'conditions' => $conditionsAllowedToSend,
         ]);
+    }
+
+    public function harvestAnalysis(Request $request, HarvestAiAnalysisService $harvestAiAnalysisService): JsonResponse
+    {
+        $validated = $request->validate([
+            'pond_id' => ['required', 'integer', 'exists:ponds,id'],
+        ]);
+
+        $user = $request->user();
+        $pond = Pond::where('id', $validated['pond_id'])
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $pond) {
+            return response()->json([
+                'ok' => false,
+                'canAnalyze' => false,
+                'message' => 'Unable to generate AI analysis for this pond.',
+                'analysis' => null,
+                'cached' => false,
+            ], 403);
+        }
+
+        return response()->json($harvestAiAnalysisService->analyzePond($user->id, $pond));
     }
 
     private function toFloat(mixed $value): float

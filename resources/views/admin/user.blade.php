@@ -223,6 +223,15 @@
                              class="hidden mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                         </div>
                     </div>
+
+                    <div id="adminPondHarvestAnalysisPanel"
+                         class="hidden mt-4 rounded-md border border-blue-100 bg-blue-50 px-4 py-4 text-sm">
+                        <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                            <h5 class="font-semibold text-gray-800">AI Harvest Analysis</h5>
+                            <span id="adminPondHarvestAnalysisStatus" class="text-xs font-medium text-blue-700"></span>
+                        </div>
+                        <div id="adminPondHarvestAnalysisBody" class="mt-3 whitespace-pre-line text-gray-700"></div>
+                    </div>
                 </div>
             </div>
 
@@ -314,8 +323,10 @@
 
     <script>
         const adminPondTelemetryUrlTemplate = @json($pondTelemetryUrlTemplate);
+        const adminPondHarvestAnalysisUrlTemplate = @json($pondHarvestAnalysisUrlTemplate);
 
         let currentUserId = null;
+        let currentPondId = null;
         let currentUserPonds = {};
         let adminPondCharts = {
             ph: null,
@@ -329,6 +340,7 @@
             $('#adminPondNoTelemetry').addClass('hidden').text('No telemetry data found for this pond.');
             $('#adminPondCharts').removeClass('hidden');
             $('#adminSelectedPondTitle').text('');
+            currentPondId = null;
             resetAdminHarvestComparison();
             resetAdminPondHarvest();
         }
@@ -352,6 +364,9 @@
             $('#adminPondHarvestPreviousCycle').text('');
             $('#adminPondHarvestLatestCycle').text('');
             $('#adminPondHarvestComparisonNotes').addClass('hidden').empty();
+            $('#adminPondHarvestAnalysisPanel').addClass('hidden');
+            $('#adminPondHarvestAnalysisStatus').text('');
+            $('#adminPondHarvestAnalysisBody').removeClass('text-red-700').text('');
 
             if (adminHarvestComparisonChart) {
                 adminHarvestComparisonChart.destroy();
@@ -633,6 +648,64 @@
             `;
         }
 
+        function harvestAnalysisEmptyMessage(comparison) {
+            if (comparison?.message === 'Not enough completed harvest cycles to compare yet.') {
+                return 'Not enough completed harvest cycles to generate AI analysis yet.';
+            }
+
+            return 'AI harvest analysis cannot be generated until valid harvest comparison data is available.';
+        }
+
+        function setAdminHarvestAnalysisState(status, message, isError = false) {
+            $('#adminPondHarvestAnalysisPanel').removeClass('hidden');
+            $('#adminPondHarvestAnalysisStatus').text(status);
+            $('#adminPondHarvestAnalysisBody')
+                .toggleClass('text-red-700', isError)
+                .text(message);
+        }
+
+        async function loadAdminHarvestAnalysis(pond, comparison) {
+            if (!comparison?.hasComparison) {
+                setAdminHarvestAnalysisState('Unavailable', harvestAnalysisEmptyMessage(comparison));
+                return;
+            }
+
+            const pondId = String(pond.id);
+            setAdminHarvestAnalysisState('Generating', 'Generating AI harvest analysis for this pond...');
+
+            try {
+                const url = adminPondHarvestAnalysisUrlTemplate
+                    .replace('__USER__', currentUserId)
+                    .replace('__POND__', pondId);
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await response.json();
+
+                if (String(currentPondId) !== pondId) {
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.message ?? 'Unable to generate AI harvest analysis.');
+                }
+
+                if (data.ok && data.analysis) {
+                    const status = data.fallback ? 'Fallback' : (data.cached ? 'Cached' : 'Ready');
+                    setAdminHarvestAnalysisState(status, data.analysis);
+                    return;
+                }
+
+                setAdminHarvestAnalysisState('Unavailable', data.message ?? 'AI harvest analysis cannot be generated yet.');
+            } catch (error) {
+                if (String(currentPondId) === pondId) {
+                    setAdminHarvestAnalysisState('Unavailable', error.message || 'AI harvest analysis could not be generated right now.', true);
+                }
+            }
+        }
+
         function showAdminHarvestComparison(pond, comparison) {
             $('#adminPondHarvestComparisonSection').removeClass('hidden');
 
@@ -646,6 +719,7 @@
                 $('#adminPondHarvestComparisonEmpty')
                     .removeClass('hidden')
                     .text(comparison?.message ?? 'Not enough completed harvest cycles to compare yet.');
+                loadAdminHarvestAnalysis(pond, comparison);
                 return;
             }
 
@@ -667,6 +741,8 @@
             } else {
                 $('#adminPondHarvestComparisonNotes').addClass('hidden').empty();
             }
+
+            loadAdminHarvestAnalysis(pond, comparison);
         }
 
         function showAdminPondHarvest(pond, harvest) {
@@ -823,6 +899,8 @@
                 return;
             }
 
+            currentPondId = pondId;
+
             $('.view-pond-telemetry')
                 .removeClass('bg-blue-600 text-white')
                 .addClass('bg-blue-50 text-blue-700');
@@ -856,6 +934,7 @@
                 $('#adminPondHarvestComparisonEmpty')
                     .removeClass('hidden')
                     .text('Unable to load harvest comparison for this pond.');
+                setAdminHarvestAnalysisState('Unavailable', 'AI harvest analysis could not be loaded because the pond details failed.', true);
                 $('#adminPondHarvestSection').removeClass('hidden');
                 $('#adminPondHarvestContent').addClass('hidden');
                 $('#adminPondHarvestEmpty')

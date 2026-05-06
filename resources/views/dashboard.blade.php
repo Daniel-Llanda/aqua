@@ -152,6 +152,20 @@
                             {{ $harvestComparison['message'] ?? 'Not enough completed harvest cycles to compare yet.' }}
                         </div>
                     @endif
+
+                    <div id="harvestAiAnalysisPanel"
+                         class="mt-4 rounded-md border border-blue-100 bg-blue-50 px-4 py-4 text-sm dark:border-blue-900/60 dark:bg-blue-950/30">
+                        <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                            <h4 class="font-semibold text-gray-800 dark:text-gray-100">AI Harvest Analysis</h4>
+                            <span id="harvestAiAnalysisStatus" class="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                {{ $harvestComparison && $harvestComparison['hasComparison'] ? 'Preparing' : 'Unavailable' }}
+                            </span>
+                        </div>
+                        <div id="harvestAiAnalysisBody"
+                             class="mt-3 whitespace-pre-line text-gray-700 dark:text-gray-300">
+                            {{ $harvestComparison && $harvestComparison['hasComparison'] ? 'Preparing AI harvest analysis...' : 'Not enough completed harvest cycles to generate AI analysis yet.' }}
+                        </div>
+                    </div>
                 </div>
             </div>
         @endif
@@ -238,12 +252,14 @@
             'fish' => is_array($selectedPond->fish_type) ? $selectedPond->fish_type : [],
         ] : null);
         window.harvestComparison = @json($harvestComparison);
+        window.harvestAnalysisEndpoint = @json(route('dashboard.harvest-analysis'));
 
         $(document).ready(function() {
 
             let selectedPond = window.selectedPondContext;
             const smsAlertEndpoint = @json(route('dashboard.alerts.sms'));
             const csrfToken = @json(csrf_token());
+            const harvestAnalysisEndpoint = window.harvestAnalysisEndpoint;
 
             function typeText(el, text, speed = 20) {
                 el.html('');
@@ -390,11 +406,62 @@
                 });
             }
 
+            function setHarvestAnalysisState(status, message, isError = false) {
+                const statusEl = document.getElementById('harvestAiAnalysisStatus');
+                const bodyEl = document.getElementById('harvestAiAnalysisBody');
+
+                if (!statusEl || !bodyEl) {
+                    return;
+                }
+
+                statusEl.textContent = status;
+                bodyEl.textContent = message;
+                bodyEl.classList.toggle('text-red-700', isError);
+                bodyEl.classList.toggle('dark:text-red-300', isError);
+            }
+
+            async function loadHarvestAnalysis() {
+                const panel = document.getElementById('harvestAiAnalysisPanel');
+
+                if (!panel || !selectedPond || !window.harvestComparison?.hasComparison) {
+                    return;
+                }
+
+                setHarvestAnalysisState('Generating', 'Generating AI harvest analysis for this pond...');
+
+                try {
+                    const url = new URL(harvestAnalysisEndpoint, window.location.origin);
+                    url.searchParams.set('pond_id', selectedPond.id);
+
+                    const response = await fetch(url.toString(), {
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data?.message ?? 'Unable to generate AI harvest analysis.');
+                    }
+
+                    if (data.ok && data.analysis) {
+                        const status = data.fallback ? 'Fallback' : (data.cached ? 'Cached' : 'Ready');
+                        setHarvestAnalysisState(status, data.analysis);
+                        return;
+                    }
+
+                    setHarvestAnalysisState('Unavailable', data.message ?? 'AI harvest analysis cannot be generated yet.');
+                } catch (error) {
+                    setHarvestAnalysisState('Unavailable', error.message || 'AI harvest analysis could not be generated right now.', true);
+                }
+            }
+
             if (selectedPond) {
                 phChart = buildLineChart('phChart', 'pH Level', @json($phData), 'blue', 'rgba(0,0,255,0.1)');
                 tempChart = buildLineChart('tempChart', 'Water Temperature (°C)', @json($tempData), 'orange', 'rgba(255,165,0,0.1)');
                 ammoniaChart = buildLineChart('ammoniaChart', 'Ammonia (ppm)', @json($ammoniaData), 'red', 'rgba(255,0,0,0.1)');
                 buildHarvestComparisonChart(window.harvestComparison);
+                loadHarvestAnalysis();
             }
 
             // ================= Pond Selection =================
