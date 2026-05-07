@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('ponds', function (Blueprint $table) {
             //
-            $table->date('hatching_date')->nullable()->change();
+            $table->date('hatching_started_at')->nullable()->change();
             $table->json('species_data')->nullable()->change();
             $table->json('harvest_data')->nullable()->change();
         });
