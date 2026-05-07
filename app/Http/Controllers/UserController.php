@@ -451,6 +451,7 @@ class UserController extends Controller
             'user_id' => auth()->id(),
             'hectares' => $request->hectares,
             'fish_type' => $request->fish_type,
+            'harvest_started_at' => Carbon::now()
         ]);
 
         return redirect()
