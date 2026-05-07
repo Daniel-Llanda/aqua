@@ -13,6 +13,7 @@ class Pond extends Model
         'user_id',
         'hectares',
         'fish_type',
+        'harvest_started_at',
     ];
 
     protected function casts(): array
